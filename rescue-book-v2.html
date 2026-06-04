@@ -1,0 +1,993 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RESCUE BOOK — 民間救急予約システム</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700;900&display=swap" rel="stylesheet">
+<style>
+:root {
+  --red:#e63946;--dark:#1a1a2e;--mid:#16213e;
+  --gray:#f4f5f7;--border:#e2e4e9;--text:#1a1a2e;
+  --muted:#6b7280;--green:#10b981;--orange:#f59e0b;--blue:#3b82f6;
+  --shadow:0 4px 24px rgba(0,0,0,0.08);--radius:12px;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Noto Sans JP',sans-serif;background:var(--gray);color:var(--text);min-height:100vh;}
+header{background:var(--dark);position:sticky;top:0;z-index:100;box-shadow:0 2px 16px rgba(0,0,0,.4);}
+.hi{max-width:1280px;margin:0 auto;padding:0 24px;height:60px;display:flex;align-items:center;justify-content:space-between;}
+.logo{display:flex;align-items:center;gap:10px;}
+.lm{width:34px;height:34px;background:var(--red);border-radius:8px;display:grid;place-items:center;color:#fff;font-size:20px;font-weight:900;}
+.lt{color:#fff;font-size:15px;font-weight:700;letter-spacing:2px;}
+.ls{color:#6b7a99;font-size:9px;letter-spacing:1px;}
+nav{display:flex;gap:4px;}
+.nb{background:transparent;border:none;color:#8899bb;padding:8px 14px;border-radius:8px;cursor:pointer;font-size:13px;font-family:inherit;font-weight:500;transition:all .2s;}
+.nb:hover{background:rgba(255,255,255,.06);color:#fff;}
+.nb.active{background:var(--red);color:#fff;}
+main{max-width:1280px;margin:0 auto;padding:28px 24px;}
+.page{display:none;flex-direction:column;gap:20px;}
+.page.active{display:flex;}
+.ph{display:flex;align-items:center;justify-content:space-between;}
+.pt{font-size:22px;font-weight:700;color:var(--dark);border-left:4px solid var(--red);padding-left:12px;}
+.card{background:#fff;border-radius:var(--radius);padding:24px;box-shadow:var(--shadow);}
+.ct{font-size:14px;font-weight:700;color:var(--dark);margin-bottom:18px;padding-bottom:12px;border-bottom:1px solid var(--border);display:flex;align-items:center;}
+.steps{display:flex;align-items:center;gap:8px;}
+.step{display:flex;align-items:center;gap:6px;opacity:.35;}
+.step.active{opacity:1;}
+.sn{width:24px;height:24px;background:var(--red);color:#fff;border-radius:50%;display:grid;place-items:center;font-size:11px;font-weight:700;}
+.sl{font-size:12px;color:#444;font-weight:500;}
+.fg{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+.fg2{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;}
+.fg.full,.fg2.full{grid-column:1/-1;}
+.fgroup{display:flex;flex-direction:column;gap:6px;}
+.fgroup.full{grid-column:1/-1;}
+label{font-size:12px;font-weight:600;color:var(--muted);}
+.req{background:#fee2e2;color:var(--red);font-size:10px;padding:1px 6px;border-radius:4px;margin-left:4px;}
+input,select,textarea{padding:10px 14px;border:1.5px solid var(--border);border-radius:8px;font-size:14px;font-family:inherit;color:var(--text);background:#fafafa;outline:none;transition:border-color .2s;width:100%;}
+input:focus,select:focus,textarea:focus{border-color:var(--red);background:#fff;}
+textarea{resize:vertical;min-height:72px;}
+
+/* 住所サジェスト */
+.addr-wrap{position:relative;}
+.addr-hint{font-size:11px;color:var(--muted);margin-top:4px;}
+.addr-confirmed{font-size:11px;color:var(--green);margin-top:4px;font-weight:600;}
+
+/* チェックボックス選択式 */
+.check-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:8px;margin-top:4px;}
+.check-item{display:flex;align-items:center;gap:8px;padding:10px 14px;border:1.5px solid var(--border);border-radius:8px;cursor:pointer;transition:all .2s;background:#fafafa;font-size:13px;}
+.check-item:hover{border-color:var(--red);background:#fff8f8;}
+.check-item.selected{border-color:var(--red);background:#fff0f0;font-weight:600;}
+.check-item input[type=checkbox]{width:16px;height:16px;accent-color:var(--red);flex-shrink:0;}
+
+/* 料金プレビュー */
+.fare-preview{background:linear-gradient(135deg,var(--dark),var(--mid));border-radius:12px;padding:20px 24px;margin:16px 0;}
+.fare-rows{display:flex;flex-direction:column;gap:6px;margin-bottom:12px;}
+.fare-row{display:flex;justify-content:space-between;font-size:12px;color:#8899bb;}
+.fare-row.total{border-top:1px solid #2a2a4e;padding-top:10px;margin-top:4px;font-size:16px;font-weight:700;color:#fff;}
+.fare-row span:last-child{color:#e0e0e0;}
+.fare-row.total span:last-child{color:var(--red);font-size:22px;}
+
+.calc-btn{width:100%;padding:14px;background:var(--dark);color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:8px;}
+.calc-btn:disabled{opacity:.4;cursor:not-allowed;}
+.map-container{height:220px;border-radius:10px;overflow:hidden;margin:12px 0;border:1px solid var(--border);}
+.dist-result{display:flex;background:#f0f9ff;border:1px solid #bae6fd;border-radius:10px;padding:16px;margin:12px 0;gap:0;}
+.dist-item{flex:1;text-align:center;}
+.dist-label{font-size:10px;color:var(--muted);letter-spacing:1px;margin-bottom:4px;}
+.dist-value{font-size:22px;font-weight:700;color:var(--blue);}
+.dist-unit{font-size:12px;color:var(--muted);margin-left:2px;}
+.dist-divider{width:1px;background:#bae6fd;margin:0 8px;}
+
+.btn-row{display:flex;justify-content:flex-end;gap:10px;margin-top:20px;}
+.btn{padding:11px 24px;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;transition:all .2s;}
+.btn-primary{background:var(--red);color:#fff;}
+.btn-secondary{background:var(--gray);color:#555;}
+.btn-success{background:var(--green);color:#fff;}
+
+.confirm-table{border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:20px;}
+.crow{display:flex;border-bottom:1px solid var(--border);}
+.crow:last-child{border-bottom:none;}
+.ckey{width:150px;background:#f8f9fa;padding:11px 14px;font-size:12px;font-weight:600;color:#666;flex-shrink:0;}
+.cval{padding:11px 14px;font-size:13px;}
+
+.stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;}
+.stat-card{background:#fff;border-radius:var(--radius);padding:20px;box-shadow:var(--shadow);text-align:center;}
+.sv{font-size:38px;font-weight:900;}
+.sl2{font-size:11px;color:var(--muted);margin-top:4px;}
+
+.table-wrap{overflow-x:auto;}
+table{width:100%;border-collapse:collapse;font-size:13px;}
+thead tr{background:#f8f9fa;}
+th{padding:11px 14px;text-align:left;font-weight:600;color:#555;border-bottom:2px solid var(--border);white-space:nowrap;}
+td{padding:11px 14px;vertical-align:middle;border-bottom:1px solid #f0f2f5;}
+.badge{border-radius:20px;padding:3px 10px;font-size:11px;font-weight:600;}
+.bc{background:#d1fae5;color:#065f46;}
+.bp{background:#fef3c7;color:#92400e;}
+.bv{background:#dbeafe;color:#1e40af;}
+.id-chip{background:#f0f2f5;border-radius:4px;padding:2px 8px;font-size:11px;font-weight:700;font-family:monospace;}
+
+.cal-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;}
+.cal-month{font-size:18px;font-weight:700;}
+.cal-nav{background:var(--gray);border:none;border-radius:8px;padding:8px 14px;cursor:pointer;font-size:16px;}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;}
+.cdl{text-align:center;font-size:11px;font-weight:600;color:var(--muted);padding:6px 0;}
+.cc{min-height:80px;border:1px solid var(--border);border-radius:8px;padding:6px;background:#fafafa;}
+.cc.has-event{background:#fff8f8;border-color:#fcc;}
+.cd{font-size:12px;font-weight:600;margin-bottom:4px;}
+.ce{font-size:10px;background:var(--red);color:#fff;border-radius:3px;padding:1px 5px;margin-bottom:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+
+.toast{position:fixed;bottom:24px;right:24px;background:var(--dark);color:#fff;padding:14px 20px;border-radius:10px;font-size:13px;font-weight:500;z-index:9999;transform:translateY(100px);opacity:0;transition:all .3s;}
+.toast.show{transform:translateY(0);opacity:1;}
+.toast.success{border-left:4px solid var(--green);}
+.toast.error{border-left:4px solid var(--red);}
+.loading{display:flex;align-items:center;gap:8px;color:var(--muted);font-size:13px;padding:20px;justify-content:center;}
+.spinner{width:18px;height:18px;border:2px solid #e0e0e0;border-top-color:var(--red);border-radius:50%;animation:spin .7s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg);}}
+
+.section-title{font-size:13px;font-weight:700;color:var(--dark);margin:20px 0 10px;padding-left:8px;border-left:3px solid var(--red);}
+
+@media(max-width:768px){.fg{grid-template-columns:1fr;}.stats-grid{grid-template-columns:repeat(2,1fr);}.check-grid{grid-template-columns:1fr 1fr;}}
+</style>
+</head>
+<body>
+<header>
+  <div class="hi">
+    <div class="logo">
+      <div class="lm">＋</div>
+      <div><div class="lt">RESCUE BOOK</div><div class="ls">民間救急予約システム</div></div>
+    </div>
+    <nav>
+      <button class="nb active" onclick="showPage('booking')" id="nav-booking">＋ 新規予約</button>
+      <button class="nb" onclick="showPage('dashboard')" id="nav-dashboard">≡ 予約管理</button>
+      <button class="nb" onclick="showPage('calendar')" id="nav-calendar">□ カレンダー</button>
+      <button class="nb" onclick="showPage('members')" id="nav-members">👥 スタッフ・車両</button>
+    </nav>
+  </div>
+</header>
+
+<main>
+<!-- ── 新規予約 ── -->
+<div class="page active" id="page-booking">
+  <div class="ph">
+    <div class="pt">新規予約</div>
+    <div class="steps">
+      <div class="step active" id="step-1"><div class="sn">1</div><span class="sl">患者・日時</span></div>
+      <span style="color:#ccc">›</span>
+      <div class="step" id="step-2"><div class="sn">2</div><span class="sl">搬送情報</span></div>
+      <span style="color:#ccc">›</span>
+      <div class="step" id="step-3"><div class="sn">3</div><span class="sl">サービス・料金</span></div>
+      <span style="color:#ccc">›</span>
+      <div class="step" id="step-4"><div class="sn">4</div><span class="sl">確認・確定</span></div>
+    </div>
+  </div>
+
+  <!-- Step1: 患者・日時 -->
+  <div class="card" id="booking-step-1">
+    <div class="ct">👤 患者・依頼者情報</div>
+    <div class="fg">
+      <div class="fgroup"><label>患者氏名 <span class="req">必須</span></label><input id="b-name" type="text" placeholder="例：田中 一郎"></div>
+      <div class="fgroup"><label>連絡先電話番号</label><input id="b-phone" type="tel" placeholder="090-0000-0000"></div>
+      <div class="fgroup"><label>搬送日 <span class="req">必須</span></label><input id="b-date" type="date"></div>
+      <div class="fgroup"><label>搬送時刻 <span class="req">必須</span></label><input id="b-time" type="time"></div>
+    </div>
+    <div class="btn-row"><button class="btn btn-primary" onclick="goStep(2)">次へ →</button></div>
+  </div>
+
+  <!-- Step2: 搬送情報 -->
+  <div class="card" id="booking-step-2" style="display:none;">
+    <div class="ct">🗺 搬送元・搬送先</div>
+    <div class="fg">
+      <div class="fgroup full">
+        <label>搬送元 <span class="req">必須</span></label>
+        <div class="addr-wrap">
+          <input id="b-from" type="text" placeholder="施設名または住所を入力（例：名古屋市立大学病院）" oninput="resetCalc()">
+        </div>
+        <div class="addr-hint">📍 施設名・病院名・住所どちらでも入力できます。候補が出たら選んでください。</div>
+        <div id="b-from-confirmed" class="addr-confirmed" style="display:none;"></div>
+      </div>
+      <div class="fgroup full">
+        <label>搬送先 <span class="req">必須</span></label>
+        <div class="addr-wrap">
+          <input id="b-to" type="text" placeholder="施設名または住所を入力（例：愛知医科大学病院）" oninput="resetCalc()">
+        </div>
+        <div class="addr-hint">📍 施設名・病院名・住所どちらでも入力できます。候補が出たら選んでください。</div>
+        <div id="b-to-confirmed" class="addr-confirmed" style="display:none;"></div>
+      </div>
+    </div>
+    <button class="calc-btn" id="calc-btn" onclick="calcDistance()">🗺 距離・所要時間をGoogle Mapsで計算</button>
+    <div id="map-container" class="map-container" style="display:none;"></div>
+    <div class="dist-result" id="dist-result" style="display:none;">
+      <div class="dist-item"><div class="dist-label">距離</div><div class="dist-value" id="res-dist">—</div></div>
+      <div class="dist-divider"></div>
+      <div class="dist-item"><div class="dist-label">所要時間</div><div class="dist-value" id="res-dur">—<span class="dist-unit">分</span></div></div>
+      <div class="dist-divider"></div>
+      <div class="dist-item"><div class="dist-label">確保時間（前後込）</div><div class="dist-value" id="res-res">—<span class="dist-unit">分</span></div></div>
+    </div>
+
+    <div class="section-title">🏢 搬送元の状況</div>
+    <div class="fg">
+      <div class="fgroup"><label>何階からの搬送？</label><input id="b-floor" type="number" placeholder="例：3" min="1" max="50" oninput="updateFare()"></div>
+      <div class="fgroup"><label>エレベーター</label>
+        <select id="b-ev" onchange="updateFare()">
+          <option value="yes">あり</option>
+          <option value="no">なし（階段のみ）</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="fgroup full" style="margin-top:16px;"><label>備考・注意事項</label><textarea id="b-notes" placeholder="例：左半身麻痺あり、点滴中など"></textarea></div>
+    <!-- スタッフ・車両は非表示（スタッフ側で設定） -->
+    <select id="b-vehicle" style="display:none;"></select>
+    <select id="b-staff" style="display:none;"></select>
+    <div class="btn-row">
+      <button class="btn btn-secondary" onclick="goStep(1)">← 戻る</button>
+      <button class="btn btn-primary" id="btn-step3" onclick="goStep(3)" disabled>次へ →</button>
+    </div>
+  </div>
+
+  <!-- Step3: サービス選択・料金 -->
+  <div class="card" id="booking-step-3" style="display:none;">
+    <div class="ct">💴 サービス選択 &amp; 料金計算</div>
+
+    <!-- 介助料（自動判定・表示のみ） -->
+    <div id="assist-auto-box" style="background:#f0fdf4;border:1.5px solid #86efac;border-radius:10px;padding:16px;margin-bottom:16px;">
+      <div style="font-size:12px;font-weight:700;color:#166534;margin-bottom:10px;">🤝 介助料（自動判定）</div>
+      <div style="display:flex;flex-direction:column;gap:8px;">
+        <div style="display:flex;align-items:center;gap:10px;font-size:13px;">
+          <span style="background:#22c55e;color:#fff;border-radius:4px;padding:2px 8px;font-size:11px;font-weight:700;">自動</span>
+          基本介助 <span style="margin-left:auto;font-weight:700;">¥1,800</span>
+        </div>
+        <div id="special-assist-row" style="display:none;flex-direction:column;gap:8px;">
+          <div style="display:flex;align-items:center;gap:10px;font-size:13px;">
+            <span style="background:#f59e0b;color:#fff;border-radius:4px;padding:2px 8px;font-size:11px;font-weight:700;">自動</span>
+            特殊介助
+            <span style="margin-left:auto;display:flex;align-items:center;gap:6px;">
+              <span style="font-size:11px;color:var(--muted);">金額：</span>
+              <input id="special-assist-fee" type="number" placeholder="0" style="width:90px;padding:4px 8px;font-size:13px;" oninput="updateFare()">
+              <span style="font-size:11px;color:var(--muted);">円</span>
+            </span>
+          </div>
+          <div id="special-assist-reasons" style="font-size:11px;color:#92400e;background:#fef3c7;border-radius:6px;padding:8px 10px;"></div>
+          <!-- 対応内容・人数 -->
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:4px;">
+            <div class="fgroup">
+              <label>対応内容（作業メモ）</label>
+              <input id="special-assist-detail" type="text" placeholder="例：階段3階、2人で搬送">
+            </div>
+            <div class="fgroup">
+              <label>対応人数</label>
+              <input id="special-assist-staff" type="number" placeholder="2" min="1" max="10" oninput="updateFare()">
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-title">機材</div>
+    <div class="check-grid">
+      <label class="check-item" onclick="toggleCheck(this,'車いす',500)"><input type="checkbox">車いす<span style="margin-left:auto;color:var(--muted);font-size:11px;">¥500</span></label>
+      <label class="check-item" onclick="toggleCheck(this,'リクライニング',1500)"><input type="checkbox">リクライニング<span style="margin-left:auto;color:var(--muted);font-size:11px;">¥1,500</span></label>
+      <label class="check-item" id="ci-stretcher" onclick="toggleCheck(this,'ストレッチャー',2500);checkSpecialAssist()"><input type="checkbox">ストレッチャー<span style="margin-left:auto;color:var(--muted);font-size:11px;">¥2,500</span></label>
+      <label class="check-item" id="ci-belka" onclick="toggleCheck(this,'ベルカ担架',1000);checkSpecialAssist()"><input type="checkbox">ベルカ担架<span style="margin-left:auto;color:var(--muted);font-size:11px;">¥1,000</span></label>
+      <label class="check-item" id="ci-scoop" onclick="toggleCheck(this,'スクープ',1000);checkSpecialAssist()"><input type="checkbox">スクープ<span style="margin-left:auto;color:var(--muted);font-size:11px;">¥1,000</span></label>
+    </div>
+
+    <div class="section-title">追加介助・その他</div>
+    <div class="check-grid">
+      <label class="check-item" id="ci-transfer" onclick="toggleCheck(this,'移乗介助',0);checkSpecialAssist()"><input type="checkbox">移乗介助あり<span style="margin-left:auto;color:var(--muted);font-size:11px;">特殊介助に含む</span></label>
+      <label class="check-item" id="ci-other-assist" onclick="toggleCheck(this,'その他介助',0);checkSpecialAssist()"><input type="checkbox">その他の介助あり<span style="margin-left:auto;color:var(--muted);font-size:11px;">特殊介助に含む</span></label>
+    </div>
+
+    <div class="section-title">オプション</div>
+    <div class="check-grid">
+      <label class="check-item" onclick="toggleCheck(this,'看護師同乗',10000)"><input type="checkbox">看護師同乗</label>
+      <label class="check-item" onclick="toggleCheck(this,'酸素（5ℓ以下）',1500)"><input type="checkbox">酸素（5ℓ以下）</label>
+      <label class="check-item" onclick="toggleCheck(this,'酸素（6ℓ以上）',2500)"><input type="checkbox">酸素（6ℓ以上）</label>
+      <label class="check-item" onclick="toggleCheck(this,'吸引',3000)"><input type="checkbox">吸引</label>
+      <label class="check-item" onclick="toggleCheck(this,'院内同行',1000)"><input type="checkbox">院内同行</label>
+      <label class="check-item" onclick="toggleCheck(this,'病院選定料',1000)"><input type="checkbox">病院選定料</label>
+    </div>
+
+    <!-- 料金プレビュー -->
+    <div class="fare-preview" id="fare-preview">
+      <div class="fare-rows" id="fare-rows">
+        <div class="fare-row"><span>運賃（搬送時間計算中）</span><span id="fp-transport">—</span></div>
+        <div class="fare-row"><span>迎車料</span><span>¥200</span></div>
+      </div>
+      <div class="fare-rows">
+        <div class="fare-row total"><span>概算合計</span><span id="fp-total">—</span></div>
+      </div>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn btn-secondary" onclick="goStep(2)">← 戻る</button>
+      <button class="btn btn-primary" onclick="goStep(4)">確認画面へ →</button>
+    </div>
+  </div>
+
+  <!-- Step4: 確認 -->
+  <div class="card" id="booking-step-4" style="display:none;">
+    <div class="ct">✅ 予約内容の確認</div>
+    <div class="confirm-table" id="confirm-table"></div>
+    <div class="btn-row">
+      <button class="btn btn-secondary" onclick="goStep(3)">← 修正する</button>
+      <button class="btn btn-success" onclick="submitBooking()">✓ 予約を確定する</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── 予約管理 ── -->
+<div class="page" id="page-dashboard">
+  <div class="ph">
+    <div class="pt">予約管理</div>
+    <button class="btn btn-primary" onclick="loadBookings()" style="font-size:12px;padding:8px 16px;">🔄 更新</button>
+  </div>
+  <div class="stats-grid">
+    <div class="stat-card"><div class="sv" style="color:var(--red)" id="stat-today">—</div><div class="sl2">本日の予約</div></div>
+    <div class="stat-card"><div class="sv" style="color:var(--orange)" id="stat-week">—</div><div class="sl2">今週の予約</div></div>
+    <div class="stat-card"><div class="sv" style="color:var(--green)" id="stat-month">—</div><div class="sl2">今月の予約</div></div>
+    <div class="stat-card"><div class="sv" style="color:var(--blue)" id="stat-total">—</div><div class="sl2">累計件数</div></div>
+  </div>
+  <div class="card">
+    <div class="ct">📋 予約一覧</div>
+    <div class="table-wrap" id="booking-table-wrap"><div class="loading"><div class="spinner"></div>読み込み中...</div></div>
+  </div>
+</div>
+
+<!-- ── カレンダー ── -->
+<div class="page" id="page-calendar">
+  <div class="ph"><div class="pt">カレンダー</div></div>
+  <div class="card">
+    <div class="cal-header">
+      <button class="cal-nav" onclick="changeMonth(-1)">←</button>
+      <span class="cal-month" id="cal-month-label"></span>
+      <button class="cal-nav" onclick="changeMonth(1)">→</button>
+    </div>
+    <div class="cal-grid" id="cal-grid"></div>
+  </div>
+</div>
+<!-- ── スタッフ・車両管理 ── -->
+<div class="page" id="page-members">
+  <div class="ph"><div class="pt">スタッフ・車両管理</div></div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
+
+    <!-- スタッフ -->
+    <div class="card">
+      <div class="ct">👤 スタッフ一覧
+        <button onclick="showAddStaff()" class="btn btn-primary" style="font-size:11px;padding:6px 14px;margin-left:auto;">＋ 追加</button>
+      </div>
+      <div id="staff-list"><div class="loading"><div class="spinner"></div>読み込み中...</div></div>
+      <!-- 追加フォーム -->
+      <div id="add-staff-form" style="display:none;margin-top:16px;padding-top:16px;border-top:1px solid var(--border);">
+        <div class="fg" style="margin-bottom:12px;">
+          <div class="fgroup"><label>氏名 <span class="req">必須</span></label><input id="new-staff-name" type="text" placeholder="例：山田 太郎"></div>
+          <div class="fgroup"><label>役職・資格</label><input id="new-staff-role" type="text" placeholder="例：救急救命士"></div>
+          <div class="fgroup"><label>電話番号</label><input id="new-staff-phone" type="tel" placeholder="090-0000-0000"></div>
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-secondary" onclick="document.getElementById('add-staff-form').style.display='none'">キャンセル</button>
+          <button class="btn btn-primary" onclick="addStaff()">追加する</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 車両 -->
+    <div class="card">
+      <div class="ct">🚑 車両一覧
+        <button onclick="showAddVehicle()" class="btn btn-primary" style="font-size:11px;padding:6px 14px;margin-left:auto;">＋ 追加</button>
+      </div>
+      <div id="vehicle-list"><div class="loading"><div class="spinner"></div>読み込み中...</div></div>
+      <!-- 追加フォーム -->
+      <div id="add-vehicle-form" style="display:none;margin-top:16px;padding-top:16px;border-top:1px solid var(--border);">
+        <div class="fg" style="margin-bottom:12px;">
+          <div class="fgroup"><label>車両名 <span class="req">必須</span></label><input id="new-vehicle-name" type="text" placeholder="例：救急車4号"></div>
+          <div class="fgroup"><label>種別</label><input id="new-vehicle-type" type="text" placeholder="例：高規格救急車"></div>
+          <div class="fgroup"><label>ナンバー</label><input id="new-vehicle-plate" type="text" placeholder="例：名古屋800あ0004"></div>
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-secondary" onclick="document.getElementById('add-vehicle-form').style.display='none'">キャンセル</button>
+          <button class="btn btn-primary" onclick="addVehicle()">追加する</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</main>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const SUPABASE_URL = 'https://vdrtucpegztfgapxrnuf.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZkcnR1Y3BlZ3p0ZmdhcHhybnVmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwMzE3MTIsImV4cCI6MjA5NTYwNzcxMn0.UzP9uAYQOUBUKNfS8xxVk_Koc-0gwIP9D-f8N9xpYg0';
+const MAPS_KEY = 'AIzaSyCeZYzQiJrzGjrjBX-ln0dp8pP9S03qklU';
+
+const sb = {
+  async query(table, opts={}) {
+    let url = `${SUPABASE_URL}/rest/v1/${table}?`;
+    if(opts.select) url+=`select=${opts.select}&`;
+    if(opts.order) url+=`order=${opts.order}&`;
+    if(opts.limit) url+=`limit=${opts.limit}&`;
+    const res = await fetch(url,{headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY}});
+    return res.json();
+  },
+  async update(table, data, id) {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}?id=eq.${id}`, {
+      method: 'PATCH',
+      headers: {'apikey': SUPABASE_KEY, 'Authorization': 'Bearer '+SUPABASE_KEY, 'Content-Type': 'application/json'},
+      body: JSON.stringify(data)
+    });
+    return {ok: res.ok, status: res.status};
+  },
+  async insert(table, data) {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}`,{
+      method:'POST',
+      headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY,'Content-Type':'application/json','Prefer':'return=minimal'},
+      body:JSON.stringify(data)
+    });
+    const body = await res.text();
+    if (!res.ok) console.error('Supabase error:', res.status, body);
+    return {ok:res.ok, status:res.status, body};
+  }
+};
+
+// 状態
+let calcData = null;
+let selectedServices = {};  // name: price
+let calYear = new Date().getFullYear();
+let calMonth = new Date().getMonth();
+let allBookings = [];
+let mapsLoaded = false;
+let dirService, dirRenderer, mapInst;
+
+window.onload = () => {
+  document.getElementById('b-date').value = new Date().toISOString().split('T')[0];
+  loadGoogleMaps();
+  loadBookings();
+  renderCalendar();
+};
+
+// ── Google Maps ──
+function loadGoogleMaps() {
+  const s = document.createElement('script');
+  s.src = `https://maps.googleapis.com/maps/api/js?key=${MAPS_KEY}&libraries=places&language=ja&callback=onMapsLoaded`;
+  s.async = true;
+  document.head.appendChild(s);
+}
+window.onMapsLoaded = () => {
+  mapsLoaded = true;
+  dirService = new google.maps.DirectionsService();
+  // Places Autocomplete（施設名・住所両対応）
+  const acOpts = { componentRestrictions: { country: 'jp' }, fields: ['formatted_address','name','geometry'] };
+  const acFrom = new google.maps.places.Autocomplete(document.getElementById('b-from'), acOpts);
+  const acTo   = new google.maps.places.Autocomplete(document.getElementById('b-to'),   acOpts);
+  acFrom.addListener('place_changed', () => {
+    const p = acFrom.getPlace();
+    if (!p.geometry) return;
+    const el = document.getElementById('b-from');
+    el.dataset.lat = p.geometry.location.lat();
+    el.dataset.lng = p.geometry.location.lng();
+    el.value = p.name || '';
+    const conf = document.getElementById('b-from-confirmed');
+    conf.textContent = '✓ ' + (p.name || '') + '（座標取得済み）';
+    conf.style.display = 'block';
+    resetCalcOnly();
+  });
+  acTo.addListener('place_changed', () => {
+    const p = acTo.getPlace();
+    if (!p.geometry) return;
+    const el = document.getElementById('b-to');
+    el.dataset.lat = p.geometry.location.lat();
+    el.dataset.lng = p.geometry.location.lng();
+    el.value = p.name || '';
+    const conf = document.getElementById('b-to-confirmed');
+    conf.textContent = '✓ ' + (p.name || '') + '（座標取得済み）';
+    conf.style.display = 'block';
+    resetCalcOnly();
+  });
+};
+
+async function calcDistance() {
+  const fromEl = document.getElementById('b-from');
+  const toEl = document.getElementById('b-to');
+  if(!fromEl.value.trim()||!toEl.value.trim()){showToast('搬送元と搬送先を入力してください','error');return;}
+  if(!mapsLoaded){showToast('地図を読み込み中です。少し待ってから再度押してください','error');return;}
+  // 常に緯度経度で計算（dataset.latがなければPlaces未選択）
+  const getOrigin = (el) => {
+    if (el.dataset.lat && el.dataset.lng) {
+      return new google.maps.LatLng(parseFloat(el.dataset.lat), parseFloat(el.dataset.lng));
+    }
+    // 手入力の場合
+    let s = el.value.trim();
+    s = s.replace(/^(日本[、,、,]\s*|Japan[,.]?\s*)/gi, '');
+    s = s.replace(/[０-９]/g, c => String.fromCharCode(c.charCodeAt(0) - 0xFEE0));
+    s = s.replace(/[Ａ-Ｚａ-ｚ]/g, c => String.fromCharCode(c.charCodeAt(0) - 0xFEE0));
+    s = s.replace(/　/g, ' ').trim();
+    return s;
+  };
+  const fromOrigin = getOrigin(fromEl);
+  const toDest = getOrigin(toEl);
+  console.log('from:', fromOrigin, 'to:', toDest);
+  const btn = document.getElementById('calc-btn');
+  btn.disabled=true;
+  btn.innerHTML='<div style="width:16px;height:16px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;"></div> 計算中...';
+  const mapDiv = document.getElementById('map-container');
+  mapDiv.style.display='block';
+  if(!mapInst){
+    mapInst = new google.maps.Map(mapDiv,{zoom:12,center:{lat:35.18,lng:136.9}});
+    dirRenderer = new google.maps.DirectionsRenderer();
+    dirRenderer.setMap(mapInst);
+  }
+  dirService.route({origin:fromOrigin,destination:toDest,travelMode:google.maps.TravelMode.DRIVING,region:'JP'},(result,status)=>{
+    btn.disabled=false;
+    btn.innerHTML='🗺 距離・所要時間をGoogle Mapsで計算';
+    if(status==='OK'){
+      dirRenderer.setDirections(result);
+      const leg = result.routes[0].legs[0];
+      const distKm = (leg.distance.value/1000).toFixed(1);
+      const durMin = Math.ceil(leg.duration.value/60);
+      const resMin = durMin+30;
+      calcData = {distKm,durMin,resMin};
+      document.getElementById('res-dist').innerHTML=distKm+'<span class="dist-unit">km</span>';
+      document.getElementById('res-dur').innerHTML=durMin+'<span class="dist-unit">分</span>';
+      document.getElementById('res-res').innerHTML=resMin+'<span class="dist-unit">分</span>';
+      document.getElementById('dist-result').style.display='flex';
+      document.getElementById('btn-step3').disabled=false;
+      updateFare();
+      showToast('距離計算完了 ✓','success');
+    } else {
+      showToast('住所が見つかりませんでした','error');
+    }
+  });
+}
+
+function resetCalc(){
+  calcData=null;
+  document.getElementById('dist-result').style.display='none';
+  document.getElementById('map-container').style.display='none';
+  document.getElementById('btn-step3').disabled=true;
+  document.getElementById('b-from-confirmed').style.display='none';
+  document.getElementById('b-to-confirmed').style.display='none';
+  // dataset もリセット
+  const f=document.getElementById('b-from');const t=document.getElementById('b-to');
+  delete f.dataset.lat;delete f.dataset.lng;delete f.dataset.address;
+  delete t.dataset.lat;delete t.dataset.lng;delete t.dataset.address;
+}
+function resetCalcOnly(){
+  // Places選択後は候補表示は残しつつ計算結果だけリセット
+  calcData=null;
+  document.getElementById('dist-result').style.display='none';
+  document.getElementById('map-container').style.display='none';
+  document.getElementById('btn-step3').disabled=true;
+}
+
+// ── 特殊介助の自動判定 ──
+function checkSpecialAssist() {
+  const floor = parseInt(document.getElementById('b-floor')?.value) || 1;
+  const ev = document.getElementById('b-ev')?.value;
+  const hasStairs = ev === 'no' && floor >= 2;
+  const hasScoop = document.getElementById('ci-scoop')?.classList.contains('selected');
+  const hasBelka = document.getElementById('ci-belka')?.classList.contains('selected');
+  const hasStretcher = document.getElementById('ci-stretcher')?.classList.contains('selected');
+  const hasTransfer = document.getElementById('ci-transfer')?.classList.contains('selected');
+  const hasOther = document.getElementById('ci-other-assist')?.classList.contains('selected');
+
+  const reasons = [];
+  if (hasStairs) reasons.push(`階段搬送（${floor}階・EV無し）`);
+  if (hasScoop) reasons.push('スクープ使用');
+  if (hasBelka) reasons.push('ベルカ担架使用');
+  if (hasStretcher) reasons.push('ストレッチャー使用');
+  if (hasTransfer) reasons.push('移乗介助あり');
+  if (hasOther) reasons.push('その他介助あり');
+
+  const needSpecial = reasons.length > 0;
+  const row = document.getElementById('special-assist-row');
+  const reasonBox = document.getElementById('special-assist-reasons');
+
+  if (needSpecial) {
+    row.style.display = 'flex';
+    reasonBox.textContent = '特殊介助の理由：' + reasons.join('、');
+  } else {
+    row.style.display = 'none';
+    reasonBox.textContent = '';
+    document.getElementById('special-assist-fee').value = '';
+    document.getElementById('special-assist-detail').value = '';
+    document.getElementById('special-assist-staff').value = '';
+  }
+  updateFare();
+}
+
+// ── サービス選択 ──
+function toggleCheck(el, name, price) {
+  el.classList.toggle('selected');
+  const cb = el.querySelector('input[type=checkbox]');
+  if(el.classList.contains('selected')){
+    cb.checked=true;
+    selectedServices[name]=price;
+  } else {
+    cb.checked=false;
+    delete selectedServices[name];
+  }
+  updateFare();
+}
+
+// ── 料金計算 ──
+function calcTransportFare(durMin) {
+  // 30分：4650円、以降15分ごと：2320円、迎車：200円
+  if(!durMin) return 0;
+  let fare = 4650 + 200; // 30分基本 + 迎車
+  if(durMin > 30){
+    const extra = Math.ceil((durMin-30)/15);
+    fare += extra * 2320;
+  }
+  // 階段加算（EVなし かつ 2階以上）
+  const floor = parseInt(document.getElementById('b-floor')?.value)||1;
+  const ev = document.getElementById('b-ev')?.value;
+  if(ev==='no' && floor >= 2){
+    fare += (floor-1) * 1000; // 1階ごとに1000円加算（仮）
+  }
+  return fare;
+}
+
+function updateFare() {
+  const durMin = calcData?.durMin;
+  const transportFare = calcTransportFare(durMin);
+  let rows = '';
+  let total = transportFare;
+
+  // 運賃明細
+  if(durMin){
+    const floor = parseInt(document.getElementById('b-floor')?.value)||1;
+    const ev = document.getElementById('b-ev')?.value;
+    rows += `<div class="fare-row"><span>運賃（${durMin}分）</span><span style="color:#8899bb">¥${(4650+200).toLocaleString()}</span></div>`;
+    if(durMin>30){
+      const extra=Math.ceil((durMin-30)/15);
+      rows+=`<div class="fare-row"><span>　└ 延長（${extra}回 × 15分）</span><span style="color:#8899bb">¥${(extra*2320).toLocaleString()}</span></div>`;
+    }
+    if(ev==='no'&&floor>=2){
+      const stairFee=(floor-1)*1000;
+      rows+=`<div class="fare-row"><span>　└ 階段搬送加算（${floor}階・EV無）</span><span style="color:#8899bb">¥${stairFee.toLocaleString()}</span></div>`;
+    }
+  } else {
+    rows+=`<div class="fare-row"><span>運賃（距離計算後に確定）</span><span style="color:#8899bb">—</span></div>`;
+  }
+
+  // 基本介助（常に自動加算）
+  rows+=`<div class="fare-row"><span>基本介助</span><span style="color:#8899bb">¥1,800</span></div>`;
+  total+=1800;
+
+  // 特殊介助（自動判定時のみ）
+  const specialFee = parseInt(document.getElementById('special-assist-fee')?.value) || 0;
+  const specialRow = document.getElementById('special-assist-row');
+  if (specialRow && specialRow.style.display !== 'none') {
+    const staffCount = parseInt(document.getElementById('special-assist-staff')?.value) || 1;
+    const specialTotal = specialFee * staffCount;
+    rows+=`<div class="fare-row"><span>特殊介助（${staffCount}人）</span><span style="color:#8899bb">${specialFee>0?'¥'+specialTotal.toLocaleString():'金額入力待ち'}</span></div>`;
+    total += specialTotal;
+  }
+
+  // 選択サービス（機材・オプション）
+  for(const [name,price] of Object.entries(selectedServices)){
+    if(price>0){
+      rows+=`<div class="fare-row"><span>${name}</span><span style="color:#8899bb">¥${price.toLocaleString()}</span></div>`;
+      total+=price;
+    }
+  }
+
+  document.getElementById('fare-rows').innerHTML=rows;
+  document.getElementById('fp-total').textContent = durMin ? '¥'+total.toLocaleString() : '—';
+}
+
+// ── Steps ──
+function goStep(n){
+  if(n===2){
+    if(!document.getElementById('b-name').value.trim()||!document.getElementById('b-date').value||!document.getElementById('b-time').value){
+      showToast('必須項目を入力してください','error');return;
+    }
+  }
+  if(n===3) setTimeout(checkSpecialAssist, 100);
+  if(n===4) buildConfirm();
+  const total = 4;
+  for(let i=1;i<=total;i++){
+    const el=document.getElementById(`booking-step-${i}`);
+    if(el) el.style.display=i===n?'block':'none';
+    const st=document.getElementById(`step-${i}`);
+    if(st) st.className='step'+(i<=n?' active':'');
+  }
+}
+
+function buildConfirm(){
+  const durMin = calcData?.durMin||0;
+  const floor = parseInt(document.getElementById('b-floor').value)||1;
+  const ev = document.getElementById('b-ev').value==='yes'?'あり':'なし（階段のみ）';
+  const services = Object.entries(selectedServices).map(([k,v])=>v>0?`${k}（¥${v.toLocaleString()}）`:k).join('、')||'なし';
+  const total = calcTransportFare(durMin) + Object.values(selectedServices).filter(v=>v>0).reduce((a,b)=>a+b,0);
+
+  const rows=[
+    ['患者氏名',document.getElementById('b-name').value],
+    ['連絡先',document.getElementById('b-phone').value||'—'],
+    ['搬送日時',`${document.getElementById('b-date').value} ${document.getElementById('b-time').value}`],
+    ['搬送元',document.getElementById('b-from').value],
+    ['搬送先',document.getElementById('b-to').value],
+    ['距離・時間',calcData?`${calcData.distKm}km / ${calcData.durMin}分（確保${calcData.resMin}分）`:'—'],
+    ['搬送元の階',`${floor}階 / EV ${ev}`],
+    ['選択サービス',services],
+    ['概算料金',`¥${total.toLocaleString()}`],
+    ['使用車両',document.getElementById('b-vehicle').value||'—'],
+    ['担当スタッフ',document.getElementById('b-staff').value||'—'],
+    ['備考',document.getElementById('b-notes').value||'なし'],
+  ];
+  document.getElementById('confirm-table').innerHTML=rows.map(([k,v])=>
+    `<div class="crow"><span class="ckey">${k}</span><span class="cval">${v}</span></div>`).join('');
+}
+
+async function submitBooking(){
+  const btn=event.target;
+  btn.disabled=true;btn.textContent='保存中...';
+  const floor=parseInt(document.getElementById('b-floor').value)||1;
+  const ev=document.getElementById('b-ev').value;
+  const services=Object.entries(selectedServices).map(([k,v])=>v>0?`${k}(¥${v})`:k).join(',');
+  const durMin=calcData?.durMin||0;
+  const total=calcTransportFare(durMin)+Object.values(selectedServices).filter(v=>v>0).reduce((a,b)=>a+b,0);
+
+  const specialRow = document.getElementById('special-assist-row');
+  const hasSpecial = specialRow && specialRow.style.display !== 'none';
+  const specialFee = hasSpecial ? (parseInt(document.getElementById('special-assist-fee').value)||0) : 0;
+  const specialStaff = hasSpecial ? (parseInt(document.getElementById('special-assist-staff').value)||1) : null;
+  const specialDetail = hasSpecial ? (document.getElementById('special-assist-detail').value||'') : '';
+  const specialTotal = specialFee * (specialStaff||1);
+  const grandTotal = total + 1800 + (hasSpecial ? specialTotal : 0);
+
+  const result=await sb.insert('bookings',{
+    patient_name:document.getElementById('b-name').value,
+    patient_phone:document.getElementById('b-phone').value,
+    transport_date:document.getElementById('b-date').value,
+    transport_time:document.getElementById('b-time').value+':00',
+    from_address:document.getElementById('b-from').value,
+    to_address:document.getElementById('b-to').value,
+    distance_km:parseFloat(calcData?.distKm||0),
+    duration_min:durMin,
+    reserved_min:calcData?.resMin||0,
+    fare:grandTotal,
+    vehicle:document.getElementById('b-vehicle').value,
+    staff:document.getElementById('b-staff').value,
+    notes:`${document.getElementById('b-notes').value} | ${floor}階/EV:${ev} | ${services}`,
+    special_assist_detail: specialDetail || null,
+    special_assist_staff: specialStaff,
+    special_assist_fee: hasSpecial ? specialFee : null,
+    status:'confirmed'
+  });
+  btn.disabled=false;btn.textContent='✓ 予約を確定する';
+  if(!result.ok){
+    showToast('保存エラー: ' + result.status + ' ' + (result.body||''), 'error');
+    console.error('Save error:', result.status, result.body);
+    return;
+  }
+  showToast('予約が確定しました！🎉','success');
+  // リセット
+  ['b-name','b-phone','b-from','b-to','b-notes','b-floor'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
+  document.getElementById('b-date').value=new Date().toISOString().split('T')[0];
+  document.getElementById('b-time').value='';
+  document.getElementById('b-vehicle').value='';
+  document.getElementById('b-staff').value='';
+  document.getElementById('b-ev').value='yes';
+  document.getElementById('b-from-confirmed').style.display='none';
+  document.getElementById('b-to-confirmed').style.display='none';
+  calcData=null;selectedServices={};
+  document.querySelectorAll('.check-item').forEach(el=>{el.classList.remove('selected');const cb=el.querySelector('input');if(cb)cb.checked=false;});
+  document.getElementById('dist-result').style.display='none';
+  document.getElementById('map-container').style.display='none';
+  document.getElementById('btn-step3').disabled=true;
+  goStep(1);
+  showPage('dashboard');
+  loadBookings();
+}
+
+// ── Bookings ──
+async function loadBookings(){
+  const wrap=document.getElementById('booking-table-wrap');
+  wrap.innerHTML='<div class="loading"><div class="spinner"></div>読み込み中...</div>';
+  const data=await sb.query('bookings',{select:'*',order:'transport_date.desc,transport_time.desc'});
+  allBookings=Array.isArray(data)?data:[];
+  updateStats();
+  renderBookingTable(allBookings);
+  renderCalendar();
+}
+
+function updateStats(){
+  const today=new Date().toISOString().split('T')[0];
+  const now=new Date();
+  const ws=new Date(now);ws.setDate(now.getDate()-now.getDay());
+  const ms=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+  document.getElementById('stat-today').textContent=allBookings.filter(b=>b.transport_date===today).length;
+  document.getElementById('stat-week').textContent=allBookings.filter(b=>new Date(b.transport_date)>=ws).length;
+  document.getElementById('stat-month').textContent=allBookings.filter(b=>b.transport_date?.startsWith(ms)).length;
+  document.getElementById('stat-total').textContent=allBookings.length;
+}
+
+function renderBookingTable(bookings){
+  const wrap=document.getElementById('booking-table-wrap');
+  if(!bookings.length){wrap.innerHTML='<p style="padding:20px;color:var(--muted);text-align:center;">予約データがありません</p>';return;}
+  wrap.innerHTML=`<table><thead><tr><th>ID</th><th>患者名</th><th>搬送日時</th><th>搬送元→搬送先</th><th>距離</th><th>時間</th><th>料金</th><th>状態</th></tr></thead><tbody>
+  ${bookings.map(b=>`<tr>
+    <td><span class="id-chip">${b.id?.slice(0,8)}</span></td>
+    <td><strong>${b.patient_name}</strong><br><span style="font-size:11px;color:var(--muted)">${b.patient_phone||''}</span></td>
+    <td>${b.transport_date}<br><span style="background:var(--dark);color:#fff;border-radius:4px;padding:1px 6px;font-size:11px;">${b.transport_time?.slice(0,5)}</span></td>
+    <td style="font-size:11px;max-width:180px;">${b.from_address}<br>→ ${b.to_address}</td>
+    <td>${b.distance_km?b.distance_km+'km':'—'}</td>
+    <td>${b.duration_min?b.duration_min+'分':'—'}</td>
+    <td style="font-weight:700;color:var(--red)">${b.fare?'¥'+Number(b.fare).toLocaleString():'—'}</td>
+    <td><span class="badge ${b.status==='confirmed'?'bc':'bp'}">${b.status==='confirmed'?'確定':'仮予約'}</span></td>
+  </tr>`).join('')}
+  </tbody></table>`;
+}
+
+// ── Calendar ──
+function changeMonth(d){calMonth+=d;if(calMonth>11){calMonth=0;calYear++;}if(calMonth<0){calMonth=11;calYear--;}renderCalendar();}
+function renderCalendar(){
+  const lbl=document.getElementById('cal-month-label');
+  const grid=document.getElementById('cal-grid');
+  if(!lbl||!grid)return;
+  lbl.textContent=`${calYear}年 ${calMonth+1}月`;
+  const days=['日','月','火','水','木','金','土'];
+  let html=days.map((d,i)=>`<div class="cdl" style="${i===0?'color:var(--red)':i===6?'color:var(--blue)':''}">${d}</div>`).join('');
+  const first=new Date(calYear,calMonth,1).getDay();
+  const total=new Date(calYear,calMonth+1,0).getDate();
+  for(let i=0;i<first;i++)html+='<div></div>';
+  for(let d=1;d<=total;d++){
+    const ds=`${calYear}-${String(calMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const evs=allBookings.filter(b=>b.transport_date===ds);
+    html+=`<div class="cc ${evs.length?'has-event':''}"><div class="cd">${d}</div>${evs.slice(0,3).map(e=>`<div class="ce">${e.transport_time?.slice(0,5)} ${e.patient_name}</div>`).join('')}${evs.length>3?`<div style="font-size:9px;color:var(--muted)">+${evs.length-3}件</div>`:''}</div>`;
+  }
+  grid.innerHTML=html;
+}
+
+// ── スタッフ・車両 ──
+let staffData = [];
+let vehicleData = [];
+
+async function loadMembers() {
+  // スタッフ読み込み
+  try {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/staff?select=*&order=name.asc`, {
+      headers: {'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY}
+    });
+    const data = await res.json();
+    staffData = Array.isArray(data) ? data : [];
+    if (!res.ok) console.error('staff error:', data);
+  } catch(e) {
+    console.error('staff fetch error:', e);
+    staffData = [];
+  }
+  // 車両読み込み
+  try {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/vehicles?select=*&order=name.asc`, {
+      headers: {'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY}
+    });
+    const data = await res.json();
+    vehicleData = Array.isArray(data) ? data : [];
+    if (!res.ok) console.error('vehicles error:', data);
+  } catch(e) {
+    console.error('vehicles fetch error:', e);
+    vehicleData = [];
+  }
+  renderStaffList();
+  renderVehicleList();
+}
+
+function renderStaffList() {
+  const el = document.getElementById('staff-list');
+  if (!Array.isArray(staffData) || !staffData.length) {
+    el.innerHTML = '<p style="color:var(--muted);font-size:13px;padding:8px;">スタッフが登録されていません</p>';
+    return;
+  }
+  el.innerHTML = staffData.map(s => `
+    <div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border);">
+      <div style="width:36px;height:36px;background:${s.active?'var(--red)':'#ccc'};border-radius:50%;display:grid;place-items:center;color:#fff;font-size:14px;font-weight:700;flex-shrink:0;">${s.name[0]}</div>
+      <div style="flex:1;">
+        <div style="font-size:13px;font-weight:700;">${s.name}</div>
+        <div style="font-size:11px;color:var(--muted);">${s.role||''}${s.phone?' / '+s.phone:''}</div>
+      </div>
+      <span style="font-size:11px;background:${s.active?'#d1fae5':'#f3f4f6'};color:${s.active?'#065f46':'#888'};padding:2px 8px;border-radius:20px;">${s.active?'稼働中':'休止'}</span>
+      <button onclick="toggleStaff('${s.id}',${s.active})" style="background:none;border:1px solid var(--border);border-radius:6px;padding:3px 8px;font-size:11px;cursor:pointer;">${s.active?'休止':'復帰'}</button>
+    </div>`).join('');
+}
+
+function renderVehicleList() {
+  const el = document.getElementById('vehicle-list');
+  if (!Array.isArray(vehicleData) || !vehicleData.length) {
+    el.innerHTML = '<p style="color:var(--muted);font-size:13px;padding:8px;">車両が登録されていません</p>';
+    return;
+  }
+  el.innerHTML = vehicleData.map(v => `
+    <div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border);">
+      <div style="width:36px;height:36px;background:${v.active?'var(--blue)':'#ccc'};border-radius:8px;display:grid;place-items:center;color:#fff;font-size:18px;flex-shrink:0;">🚑</div>
+      <div style="flex:1;">
+        <div style="font-size:13px;font-weight:700;">${v.name}</div>
+        <div style="font-size:11px;color:var(--muted);">${v.type||''}${v.plate?' / '+v.plate:''}</div>
+      </div>
+      <span style="font-size:11px;background:${v.active?'#dbeafe':'#f3f4f6'};color:${v.active?'#1e40af':'#888'};padding:2px 8px;border-radius:20px;">${v.active?'稼働中':'休止'}</span>
+      <button onclick="toggleVehicle('${v.id}',${v.active})" style="background:none;border:1px solid var(--border);border-radius:6px;padding:3px 8px;font-size:11px;cursor:pointer;">${v.active?'休止':'復帰'}</button>
+    </div>`).join('');
+}
+
+function updateBookingDropdowns() {
+  // スタッフドロップダウン更新
+  const staffSel = document.getElementById('b-staff');
+  if (staffSel && Array.isArray(staffData)) {
+    const active = staffData.filter(s => s.active);
+    staffSel.innerHTML = '<option value="">選択してください</option>' +
+      active.map(s => `<option value="${s.name}">${s.name}（${s.role||''}）</option>`).join('');
+  }
+  // 車両ドロップダウン更新
+  const vehSel = document.getElementById('b-vehicle');
+  if (vehSel && Array.isArray(vehicleData)) {
+    const active = vehicleData.filter(v => v.active);
+    vehSel.innerHTML = '<option value="">選択してください</option>' +
+      active.map(v => `<option value="${v.name}">${v.name}（${v.type||''}）</option>`).join('');
+  }
+}
+
+function showAddStaff() {
+  document.getElementById('add-staff-form').style.display = 'block';
+}
+function showAddVehicle() {
+  document.getElementById('add-vehicle-form').style.display = 'block';
+}
+
+async function addStaff() {
+  const name = document.getElementById('new-staff-name').value.trim();
+  if (!name) { showToast('氏名を入力してください', 'error'); return; }
+  const result = await sb.insert('staff', {
+    name, role: document.getElementById('new-staff-role').value,
+    phone: document.getElementById('new-staff-phone').value, active: true
+  });
+  if (!result.ok) { showToast('追加エラー: ' + result.body, 'error'); return; }
+  showToast(name + ' を追加しました', 'success');
+  document.getElementById('add-staff-form').style.display = 'none';
+  ['new-staff-name','new-staff-role','new-staff-phone'].forEach(id => document.getElementById(id).value = '');
+  loadMembers();
+}
+
+async function addVehicle() {
+  const name = document.getElementById('new-vehicle-name').value.trim();
+  if (!name) { showToast('車両名を入力してください', 'error'); return; }
+  const result = await sb.insert('vehicles', {
+    name, type: document.getElementById('new-vehicle-type').value,
+    plate: document.getElementById('new-vehicle-plate').value, active: true
+  });
+  if (!result.ok) { showToast('追加エラー: ' + result.body, 'error'); return; }
+  showToast(name + ' を追加しました', 'success');
+  document.getElementById('add-vehicle-form').style.display = 'none';
+  ['new-vehicle-name','new-vehicle-type','new-vehicle-plate'].forEach(id => document.getElementById(id).value = '');
+  loadMembers();
+}
+
+async function toggleStaff(id, current) {
+  await sb.update('staff', {active: !current}, id);
+  loadMembers();
+}
+
+async function toggleVehicle(id, current) {
+  await sb.update('vehicles', {active: !current}, id);
+  loadMembers();
+}
+
+// ── Nav ──
+function showPage(page){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nb').forEach(b=>b.classList.remove('active'));
+  document.getElementById(`page-${page}`).classList.add('active');
+  document.getElementById(`nav-${page}`).classList.add('active');
+  if(page==='dashboard')loadBookings();
+  if(page==='calendar')renderCalendar();
+}
+
+// ── Toast ──
+function showToast(msg,type='success'){
+  const t=document.getElementById('toast');
+  t.textContent=msg;t.className=`toast show ${type}`;
+  setTimeout(()=>t.className='toast',3000);
+}
+</script>
+</body>
+</html>
