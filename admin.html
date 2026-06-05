@@ -136,10 +136,12 @@ let modalMode = ''; // 'add-staff' | 'edit-staff' | 'add-vehicle' | 'edit-vehicl
 let editId = null;
 
 async function api(path, method='GET', body=null) {
-  const opts = {method, headers: H};
+  const opts = {method, headers: {...H, 'Prefer': 'return=minimal'}};
   if (body) opts.body = JSON.stringify(body);
   const res = await fetch(SUPABASE_URL + '/rest/v1/' + path, opts);
   if (method === 'GET') return res.json();
+  const text = await res.text();
+  if (!res.ok) console.error('API error:', res.status, text);
   return {ok: res.ok, status: res.status};
 }
 
@@ -263,8 +265,12 @@ async function toggleActive(table, id, current) {
 
 async function deleteRecord(table, id, name) {
   if (!confirm(`「${name}」を削除しますか？\n※この操作は取り消せません`)) return;
-  await api(table + '?id=eq.' + id, 'DELETE');
-  showToast(name + ' を削除しました', 'success');
+  const result = await api(table + '?id=eq.' + id, 'DELETE');
+  if (result.ok) {
+    showToast(name + ' を削除しました', 'success');
+  } else {
+    showToast('削除エラーが発生しました', 'error');
+  }
   table==='staff' ? loadStaff() : loadVehicles();
 }
 
