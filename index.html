@@ -139,7 +139,7 @@ td{padding:11px 14px;vertical-align:middle;border-bottom:1px solid #f0f2f5;}
       <button class="nb active" onclick="showPage('booking')" id="nav-booking">＋ 新規予約</button>
       <button class="nb" onclick="showPage('dashboard')" id="nav-dashboard">≡ 予約管理</button>
       <button class="nb" onclick="showPage('calendar')" id="nav-calendar">□ カレンダー</button>
-      <button class="nb" onclick="showPage('members')" id="nav-members">👥 スタッフ・車両</button>
+      <a href="admin.html" class="nb" style="text-decoration:none;">⚙️ 管理画面</a>
     </nav>
   </div>
 </header>
@@ -345,52 +345,6 @@ td{padding:11px 14px;vertical-align:middle;border-bottom:1px solid #f0f2f5;}
     <div class="cal-grid" id="cal-grid"></div>
   </div>
 </div>
-<!-- ── スタッフ・車両管理 ── -->
-<div class="page" id="page-members">
-  <div class="ph"><div class="pt">スタッフ・車両管理</div></div>
-  <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
-
-    <!-- スタッフ -->
-    <div class="card">
-      <div class="ct">👤 スタッフ一覧
-        <button onclick="showAddStaff()" class="btn btn-primary" style="font-size:11px;padding:6px 14px;margin-left:auto;">＋ 追加</button>
-      </div>
-      <div id="staff-list"><div class="loading"><div class="spinner"></div>読み込み中...</div></div>
-      <!-- 追加フォーム -->
-      <div id="add-staff-form" style="display:none;margin-top:16px;padding-top:16px;border-top:1px solid var(--border);">
-        <div class="fg" style="margin-bottom:12px;">
-          <div class="fgroup"><label>氏名 <span class="req">必須</span></label><input id="new-staff-name" type="text" placeholder="例：山田 太郎"></div>
-          <div class="fgroup"><label>役職・資格</label><input id="new-staff-role" type="text" placeholder="例：救急救命士"></div>
-          <div class="fgroup"><label>電話番号</label><input id="new-staff-phone" type="tel" placeholder="090-0000-0000"></div>
-        </div>
-        <div class="btn-row">
-          <button class="btn btn-secondary" onclick="document.getElementById('add-staff-form').style.display='none'">キャンセル</button>
-          <button class="btn btn-primary" onclick="addStaff()">追加する</button>
-        </div>
-      </div>
-    </div>
-
-    <!-- 車両 -->
-    <div class="card">
-      <div class="ct">🚑 車両一覧
-        <button onclick="showAddVehicle()" class="btn btn-primary" style="font-size:11px;padding:6px 14px;margin-left:auto;">＋ 追加</button>
-      </div>
-      <div id="vehicle-list"><div class="loading"><div class="spinner"></div>読み込み中...</div></div>
-      <!-- 追加フォーム -->
-      <div id="add-vehicle-form" style="display:none;margin-top:16px;padding-top:16px;border-top:1px solid var(--border);">
-        <div class="fg" style="margin-bottom:12px;">
-          <div class="fgroup"><label>車両名 <span class="req">必須</span></label><input id="new-vehicle-name" type="text" placeholder="例：救急車4号"></div>
-          <div class="fgroup"><label>種別</label><input id="new-vehicle-type" type="text" placeholder="例：高規格救急車"></div>
-          <div class="fgroup"><label>ナンバー</label><input id="new-vehicle-plate" type="text" placeholder="例：名古屋800あ0004"></div>
-        </div>
-        <div class="btn-row">
-          <button class="btn btn-secondary" onclick="document.getElementById('add-vehicle-form').style.display='none'">キャンセル</button>
-          <button class="btn btn-primary" onclick="addVehicle()">追加する</button>
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
 
 </main>
 
@@ -443,6 +397,7 @@ window.onload = () => {
   document.getElementById('b-date').value = new Date().toISOString().split('T')[0];
   loadGoogleMaps();
   loadBookings();
+  loadMembers();
   renderCalendar();
 };
 
