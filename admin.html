@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RESCUE BOOK — 管理画面</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700;900&display=swap" rel="stylesheet">
+<style>
+:root {
+  --red:#e63946;--dark:#1a1a2e;--mid:#16213e;
+  --gray:#f4f5f7;--border:#e2e4e9;--text:#1a1a2e;
+  --muted:#6b7280;--green:#10b981;--orange:#f59e0b;--blue:#3b82f6;
+  --shadow:0 4px 24px rgba(0,0,0,0.08);--radius:12px;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Noto Sans JP',sans-serif;background:var(--gray);color:var(--text);min-height:100vh;}
+header{background:var(--dark);position:sticky;top:0;z-index:100;box-shadow:0 2px 16px rgba(0,0,0,.4);}
+.hi{max-width:1280px;margin:0 auto;padding:0 24px;height:60px;display:flex;align-items:center;justify-content:space-between;}
+.logo{display:flex;align-items:center;gap:10px;}
+.lm{width:34px;height:34px;background:var(--red);border-radius:8px;display:grid;place-items:center;color:#fff;font-size:20px;font-weight:900;}
+.lt{color:#fff;font-size:15px;font-weight:700;letter-spacing:2px;}
+.ls{color:#6b7a99;font-size:9px;letter-spacing:1px;}
+.back-btn{background:rgba(255,255,255,.1);border:none;color:#fff;padding:8px 16px;border-radius:8px;cursor:pointer;font-size:13px;font-family:inherit;text-decoration:none;display:flex;align-items:center;gap:6px;}
+.back-btn:hover{background:rgba(255,255,255,.2);}
+main{max-width:1280px;margin:0 auto;padding:28px 24px;}
+.page-title{font-size:22px;font-weight:700;color:var(--dark);border-left:4px solid var(--red);padding-left:12px;margin-bottom:24px;}
+.tabs{display:flex;gap:4px;margin-bottom:20px;}
+.tab{padding:10px 24px;border:none;border-radius:8px;cursor:pointer;font-size:14px;font-family:inherit;font-weight:600;background:#fff;color:var(--muted);box-shadow:var(--shadow);}
+.tab.active{background:var(--red);color:#fff;}
+.card{background:#fff;border-radius:var(--radius);padding:24px;box-shadow:var(--shadow);}
+.card-title{font-size:14px;font-weight:700;color:var(--dark);margin-bottom:18px;padding-bottom:12px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;}
+
+/* テーブル */
+table{width:100%;border-collapse:collapse;font-size:13px;}
+thead tr{background:#f8f9fa;}
+th{padding:12px 14px;text-align:left;font-weight:600;color:#555;border-bottom:2px solid var(--border);}
+td{padding:12px 14px;vertical-align:middle;border-bottom:1px solid #f0f2f5;}
+tr:hover td{background:#fafbff;}
+.badge{border-radius:20px;padding:3px 10px;font-size:11px;font-weight:600;}
+.badge-active{background:#d1fae5;color:#065f46;}
+.badge-inactive{background:#f3f4f6;color:#888;}
+
+/* フォーム */
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px;}
+.form-group{display:flex;flex-direction:column;gap:6px;}
+.form-group.full{grid-column:1/-1;}
+label{font-size:12px;font-weight:600;color:var(--muted);}
+input,select{padding:10px 14px;border:1.5px solid var(--border);border-radius:8px;font-size:14px;font-family:inherit;color:var(--text);background:#fafafa;outline:none;width:100%;}
+input:focus,select:focus{border-color:var(--red);background:#fff;}
+.req{background:#fee2e2;color:var(--red);font-size:10px;padding:1px 6px;border-radius:4px;margin-left:4px;}
+
+/* ボタン */
+.btn{padding:9px 20px;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;}
+.btn-primary{background:var(--red);color:#fff;}
+.btn-secondary{background:var(--gray);color:#555;}
+.btn-danger{background:#fee2e2;color:var(--red);}
+.btn-sm{padding:5px 12px;font-size:11px;}
+.btn-row{display:flex;justify-content:flex-end;gap:10px;margin-top:16px;}
+
+/* モーダル */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;display:none;align-items:center;justify-content:center;}
+.modal-overlay.show{display:flex;}
+.modal{background:#fff;border-radius:16px;padding:28px;width:480px;max-width:90vw;box-shadow:0 20px 60px rgba(0,0,0,.3);}
+.modal-title{font-size:16px;font-weight:700;margin-bottom:20px;color:var(--dark);}
+
+.toast{position:fixed;bottom:24px;right:24px;background:var(--dark);color:#fff;padding:14px 20px;border-radius:10px;font-size:13px;font-weight:500;z-index:9999;transform:translateY(100px);opacity:0;transition:all .3s;}
+.toast.show{transform:translateY(0);opacity:1;}
+.toast.success{border-left:4px solid var(--green);}
+.toast.error{border-left:4px solid var(--red);}
+.loading{display:flex;align-items:center;gap:8px;color:var(--muted);font-size:13px;padding:20px;justify-content:center;}
+.spinner{width:18px;height:18px;border:2px solid #e0e0e0;border-top-color:var(--red);border-radius:50%;animation:spin .7s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg);}}
+</style>
+</head>
+<body>
+<header>
+  <div class="hi">
+    <div class="logo">
+      <div class="lm">＋</div>
+      <div><div class="lt">RESCUE BOOK</div><div class="ls">管理画面</div></div>
+    </div>
+    <a href="index.html" class="back-btn">← 予約システムに戻る</a>
+  </div>
+</header>
+
+<main>
+  <div class="page-title">⚙️ スタッフ・車両管理</div>
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('staff')">👤 スタッフ管理</button>
+    <button class="tab" onclick="switchTab('vehicle')">🚑 車両管理</button>
+  </div>
+
+  <!-- スタッフ管理 -->
+  <div id="tab-staff">
+    <div class="card">
+      <div class="card-title">
+        スタッフ一覧
+        <button class="btn btn-primary btn-sm" onclick="openAddModal('staff')">＋ 新規追加</button>
+      </div>
+      <div id="staff-table"><div class="loading"><div class="spinner"></div>読み込み中...</div></div>
+    </div>
+  </div>
+
+  <!-- 車両管理 -->
+  <div id="tab-vehicle" style="display:none;">
+    <div class="card">
+      <div class="card-title">
+        車両一覧
+        <button class="btn btn-primary btn-sm" onclick="openAddModal('vehicle')">＋ 新規追加</button>
+      </div>
+      <div id="vehicle-table"><div class="loading"><div class="spinner"></div>読み込み中...</div></div>
+    </div>
+  </div>
+</main>
+
+<!-- 追加・編集モーダル -->
+<div class="modal-overlay" id="modal">
+  <div class="modal">
+    <div class="modal-title" id="modal-title">スタッフを追加</div>
+    <div id="modal-form"></div>
+    <div class="btn-row">
+      <button class="btn btn-secondary" onclick="closeModal()">キャンセル</button>
+      <button class="btn btn-primary" id="modal-save-btn" onclick="saveModal()">保存する</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const SUPABASE_URL = 'https://vdrtucpegztfgapxrnuf.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZkcnR1Y3BlZ3p0ZmdhcHhybnVmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwMzE3MTIsImV4cCI6MjA5NTYwNzcxMn0.UzP9uAYQOUBUKNfS8xxVk_Koc-0gwIP9D-f8N9xpYg0';
+const H = {'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY,'Content-Type':'application/json'};
+
+let modalMode = ''; // 'add-staff' | 'edit-staff' | 'add-vehicle' | 'edit-vehicle'
+let editId = null;
+
+async function api(path, method='GET', body=null) {
+  const opts = {method, headers: H};
+  if (body) opts.body = JSON.stringify(body);
+  const res = await fetch(SUPABASE_URL + '/rest/v1/' + path, opts);
+  if (method === 'GET') return res.json();
+  return {ok: res.ok, status: res.status};
+}
+
+window.onload = () => { loadStaff(); loadVehicles(); };
+
+// ── タブ切替 ──
+function switchTab(tab) {
+  document.getElementById('tab-staff').style.display = tab==='staff' ? 'block' : 'none';
+  document.getElementById('tab-vehicle').style.display = tab==='vehicle' ? 'block' : 'none';
+  document.querySelectorAll('.tab').forEach((t,i) => t.classList.toggle('active', (i===0&&tab==='staff')||(i===1&&tab==='vehicle')));
+}
+
+// ── スタッフ ──
+async function loadStaff() {
+  const data = await api('staff?select=*&order=name.asc');
+  const wrap = document.getElementById('staff-table');
+  if (!Array.isArray(data) || !data.length) { wrap.innerHTML = '<p style="padding:20px;color:var(--muted);">スタッフが登録されていません</p>'; return; }
+  wrap.innerHTML = `<table>
+    <thead><tr><th>氏名</th><th>役職・資格</th><th>電話番号</th><th>状態</th><th>操作</th></tr></thead>
+    <tbody>${data.map(s => `<tr>
+      <td><strong>${s.name}</strong></td>
+      <td>${s.role||'—'}</td>
+      <td>${s.phone||'—'}</td>
+      <td><span class="badge ${s.active?'badge-active':'badge-inactive'}">${s.active?'稼働中':'休止中'}</span></td>
+      <td style="display:flex;gap:6px;">
+        <button class="btn btn-sm btn-secondary" onclick="openEditModal('staff','${s.id}','${s.name}','${s.role||''}','${s.phone||''}',${s.active})">編集</button>
+        <button class="btn btn-sm btn-secondary" onclick="toggleActive('staff','${s.id}',${s.active})">${s.active?'休止':'復帰'}</button>
+        <button class="btn btn-sm btn-danger" onclick="deleteRecord('staff','${s.id}','${s.name}')">削除</button>
+      </td>
+    </tr>`).join('')}</tbody>
+  </table>`;
+}
+
+// ── 車両 ──
+async function loadVehicles() {
+  const data = await api('vehicles?select=*&order=name.asc');
+  const wrap = document.getElementById('vehicle-table');
+  if (!Array.isArray(data) || !data.length) { wrap.innerHTML = '<p style="padding:20px;color:var(--muted);">車両が登録されていません</p>'; return; }
+  wrap.innerHTML = `<table>
+    <thead><tr><th>車両名</th><th>種別</th><th>ナンバー</th><th>状態</th><th>操作</th></tr></thead>
+    <tbody>${data.map(v => `<tr>
+      <td><strong>${v.name}</strong></td>
+      <td>${v.type||'—'}</td>
+      <td>${v.plate||'—'}</td>
+      <td><span class="badge ${v.active?'badge-active':'badge-inactive'}">${v.active?'稼働中':'休止中'}</span></td>
+      <td style="display:flex;gap:6px;">
+        <button class="btn btn-sm btn-secondary" onclick="openEditModal('vehicle','${v.id}','${v.name}','${v.type||''}','${v.plate||''}',${v.active})">編集</button>
+        <button class="btn btn-sm btn-secondary" onclick="toggleActive('vehicle','${v.id}',${v.active})">${v.active?'休止':'復帰'}</button>
+        <button class="btn btn-sm btn-danger" onclick="deleteRecord('vehicle','${v.id}','${v.name}')">削除</button>
+      </td>
+    </tr>`).join('')}</tbody>
+  </table>`;
+}
+
+// ── モーダル ──
+function openAddModal(type) {
+  modalMode = 'add-' + type;
+  editId = null;
+  document.getElementById('modal-title').textContent = type==='staff' ? 'スタッフを追加' : '車両を追加';
+  document.getElementById('modal-form').innerHTML = type==='staff' ? staffForm() : vehicleForm();
+  document.getElementById('modal').classList.add('show');
+}
+
+function openEditModal(type, id, name, f2, f3, active) {
+  modalMode = 'edit-' + type;
+  editId = id;
+  document.getElementById('modal-title').textContent = type==='staff' ? 'スタッフを編集' : '車両を編集';
+  document.getElementById('modal-form').innerHTML = type==='staff' ? staffForm(name,f2,f3) : vehicleForm(name,f2,f3);
+  document.getElementById('modal').classList.add('show');
+}
+
+function closeModal() { document.getElementById('modal').classList.remove('show'); }
+
+function staffForm(name='',role='',phone='') {
+  return `<div class="form-grid">
+    <div class="form-group full"><label>氏名 <span class="req">必須</span></label><input id="f-name" type="text" value="${name}" placeholder="例：山田 太郎"></div>
+    <div class="form-group"><label>役職・資格</label><input id="f-role" type="text" value="${role}" placeholder="例：救急救命士"></div>
+    <div class="form-group"><label>電話番号</label><input id="f-phone" type="tel" value="${phone}" placeholder="090-0000-0000"></div>
+  </div>`;
+}
+
+function vehicleForm(name='',type='',plate='') {
+  return `<div class="form-grid">
+    <div class="form-group full"><label>車両名 <span class="req">必須</span></label><input id="f-name" type="text" value="${name}" placeholder="例：救急車4号"></div>
+    <div class="form-group"><label>種別</label><input id="f-role" type="text" value="${type}" placeholder="例：高規格救急車"></div>
+    <div class="form-group"><label>ナンバー</label><input id="f-phone" type="text" value="${plate}" placeholder="例：名古屋800あ0004"></div>
+  </div>`;
+}
+
+async function saveModal() {
+  const name = document.getElementById('f-name').value.trim();
+  if (!name) { showToast('名前を入力してください', 'error'); return; }
+  const f2 = document.getElementById('f-role').value.trim();
+  const f3 = document.getElementById('f-phone').value.trim();
+
+  const isStaff = modalMode.includes('staff');
+  const table = isStaff ? 'staff' : 'vehicles';
+  const body = isStaff
+    ? {name, role: f2, phone: f3}
+    : {name, type: f2, plate: f3};
+
+  let result;
+  if (modalMode.startsWith('add')) {
+    body.active = true;
+    result = await api(table + '?', 'POST', body);
+  } else {
+    result = await api(table + '?id=eq.' + editId, 'PATCH', body);
+  }
+
+  if (!result.ok) { showToast('保存エラーが発生しました', 'error'); return; }
+  showToast('保存しました ✓', 'success');
+  closeModal();
+  isStaff ? loadStaff() : loadVehicles();
+}
+
+async function toggleActive(table, id, current) {
+  await api(table + '?id=eq.' + id, 'PATCH', {active: !current});
+  table==='staff' ? loadStaff() : loadVehicles();
+  showToast((current?'休止':'復帰') + 'にしました', 'success');
+}
+
+async function deleteRecord(table, id, name) {
+  if (!confirm(`「${name}」を削除しますか？\n※この操作は取り消せません`)) return;
+  await api(table + '?id=eq.' + id, 'DELETE');
+  showToast(name + ' を削除しました', 'success');
+  table==='staff' ? loadStaff() : loadVehicles();
+}
+
+function showToast(msg, type='success') {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.className = `toast show ${type}`;
+  setTimeout(() => t.className = 'toast', 3000);
+}
+</script>
+</body>
+</html>
