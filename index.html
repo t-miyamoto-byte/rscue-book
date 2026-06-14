@@ -762,7 +762,7 @@ function updateStats(){
 function renderBookingTable(bookings){
   const wrap=document.getElementById('booking-table-wrap');
   if(!bookings.length){wrap.innerHTML='<p style="padding:20px;color:var(--muted);text-align:center;">予約データがありません</p>';return;}
-  wrap.innerHTML=`<table><thead><tr><th>ID</th><th>患者名</th><th>搬送日時</th><th>搬送元→搬送先</th><th>距離</th><th>時間</th><th>料金</th><th>状態</th></tr></thead><tbody>
+  wrap.innerHTML=`<table><thead><tr><th>ID</th><th>患者名</th><th>搬送日時</th><th>搬送元→搬送先</th><th>距離</th><th>時間</th><th>料金</th><th>状態</th><th>操作</th></tr></thead><tbody>
   ${bookings.map(b=>`<tr>
     <td><span class="id-chip">${b.id?.slice(0,8)}</span></td>
     <td><strong>${b.patient_name}</strong><br><span style="font-size:11px;color:var(--muted)">${b.patient_phone||''}</span></td>
@@ -772,174 +772,111 @@ function renderBookingTable(bookings){
     <td>${b.duration_min?b.duration_min+'分':'—'}</td>
     <td style="font-weight:700;color:var(--red)">${b.fare?'¥'+Number(b.fare).toLocaleString():'—'}</td>
     <td><span class="badge ${b.status==='confirmed'?'bc':'bp'}">${b.status==='confirmed'?'確定':'仮予約'}</span></td>
+    <td style="display:flex;gap:4px;">
+      <button onclick="openEditBooking('${b.id}')" style="background:#f0f2f5;border:none;border-radius:6px;padding:4px 10px;font-size:11px;cursor:pointer;font-family:inherit;">編集</button>
+      <button onclick="deleteBooking('${b.id}','${b.patient_name}')" style="background:#fee2e2;border:none;border-radius:6px;padding:4px 10px;font-size:11px;cursor:pointer;color:#e63946;font-family:inherit;">削除</button>
+    </td>
   </tr>`).join('')}
   </tbody></table>`;
 }
 
-// ── Calendar ──
-function changeMonth(d){calMonth+=d;if(calMonth>11){calMonth=0;calYear++;}if(calMonth<0){calMonth=11;calYear--;}renderCalendar();}
-function renderCalendar(){
-  const lbl=document.getElementById('cal-month-label');
-  const grid=document.getElementById('cal-grid');
-  if(!lbl||!grid)return;
-  lbl.textContent=`${calYear}年 ${calMonth+1}月`;
-  const days=['日','月','火','水','木','金','土'];
-  let html=days.map((d,i)=>`<div class="cdl" style="${i===0?'color:var(--red)':i===6?'color:var(--blue)':''}">${d}</div>`).join('');
-  const first=new Date(calYear,calMonth,1).getDay();
-  const total=new Date(calYear,calMonth+1,0).getDate();
-  for(let i=0;i<first;i++)html+='<div></div>';
-  for(let d=1;d<=total;d++){
-    const ds=`${calYear}-${String(calMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-    const evs=allBookings.filter(b=>b.transport_date===ds);
-    html+=`<div class="cc ${evs.length?'has-event':''}"><div class="cd">${d}</div>${evs.slice(0,3).map(e=>`<div class="ce">${e.transport_time?.slice(0,5)} ${e.patient_name}</div>`).join('')}${evs.length>3?`<div style="font-size:9px;color:var(--muted)">+${evs.length-3}件</div>`:''}</div>`;
-  }
-  grid.innerHTML=html;
+// ── 予約編集モーダル ──
+function openEditBooking(id) {
+  const b = allBookings.find(b => b.id === id);
+  if (!b) return;
+  
+  // モーダルHTMLを動的生成
+  let modalHtml = `
+  <div id="edit-modal-overlay" style="position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:1000;display:flex;align-items:center;justify-content:center;">
+    <div style="background:#fff;border-radius:16px;padding:28px;width:560px;max-width:95vw;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.3);">
+      <div style="font-size:16px;font-weight:700;margin-bottom:20px;color:var(--dark);display:flex;justify-content:space-between;align-items:center;">
+        予約を編集
+        <button onclick="closeEditModal()" style="background:none;border:none;font-size:20px;cursor:pointer;color:#888;">×</button>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+        <div style="display:flex;flex-direction:column;gap:6px;">
+          <label style="font-size:12px;font-weight:600;color:var(--muted);">患者氏名</label>
+          <input id="edit-name" type="text" value="${b.patient_name||''}" style="padding:10px 14px;border:1.5px solid var(--border);border-radius:8px;font-size:14px;font-family:inherit;width:100%;">
+        </div>
+        <div style="display:flex;flex-direction:column;gap:6px;">
+          <label style="font-size:12px;font-weight:600;color:var(--muted);">連絡先</label>
+          <input id="edit-phone" type="text" value="${b.patient_phone||''}" style="padding:10px 14px;border:1.5px solid var(--border);border-radius:8px;font-size:14px;font-family:inherit;width:100%;">
+        </div>
+        <div style="display:flex;flex-direction:column;gap:6px;">
+          <label style="font-size:12px;font-weight:600;color:var(--muted);">搬送日</label>
+          <input id="edit-date" type="date" value="${b.transport_date||''}" style="padding:10px 14px;border:1.5px solid var(--border);border-radius:8px;font-size:14px;font-family:inherit;width:100%;">
+        </div>
+        <div style="display:flex;flex-direction:column;gap:6px;">
+          <label style="font-size:12px;font-weight:600;color:var(--muted);">搬送時刻</label>
+          <input id="edit-time" type="time" value="${b.transport_time?.slice(0,5)||''}" style="padding:10px 14px;border:1.5px solid var(--border);border-radius:8px;font-size:14px;font-family:inherit;width:100%;">
+        </div>
+        <div style="display:flex;flex-direction:column;gap:6px;grid-column:1/-1;">
+          <label style="font-size:12px;font-weight:600;color:var(--muted);">搬送元</label>
+          <input id="edit-from" type="text" value="${b.from_address||''}" style="padding:10px 14px;border:1.5px solid var(--border);border-radius:8px;font-size:14px;font-family:inherit;width:100%;">
+        </div>
+        <div style="display:flex;flex-direction:column;gap:6px;grid-column:1/-1;">
+          <label style="font-size:12px;font-weight:600;color:var(--muted);">搬送先</label>
+          <input id="edit-to" type="text" value="${b.to_address||''}" style="padding:10px 14px;border:1.5px solid var(--border);border-radius:8px;font-size:14px;font-family:inherit;width:100%;">
+        </div>
+        <div style="display:flex;flex-direction:column;gap:6px;">
+          <label style="font-size:12px;font-weight:600;color:var(--muted);">使用車両</label>
+          <input id="edit-vehicle" type="text" value="${b.vehicle||''}" style="padding:10px 14px;border:1.5px solid var(--border);border-radius:8px;font-size:14px;font-family:inherit;width:100%;">
+        </div>
+        <div style="display:flex;flex-direction:column;gap:6px;">
+          <label style="font-size:12px;font-weight:600;color:var(--muted);">担当スタッフ</label>
+          <input id="edit-staff" type="text" value="${b.staff||''}" style="padding:10px 14px;border:1.5px solid var(--border);border-radius:8px;font-size:14px;font-family:inherit;width:100%;">
+        </div>
+        <div style="display:flex;flex-direction:column;gap:6px;">
+          <label style="font-size:12px;font-weight:600;color:var(--muted);">料金（円）</label>
+          <input id="edit-fare" type="number" value="${b.fare||''}" style="padding:10px 14px;border:1.5px solid var(--border);border-radius:8px;font-size:14px;font-family:inherit;width:100%;">
+        </div>
+        <div style="display:flex;flex-direction:column;gap:6px;">
+          <label style="font-size:12px;font-weight:600;color:var(--muted);">状態</label>
+          <select id="edit-status" style="padding:10px 14px;border:1.5px solid var(--border);border-radius:8px;font-size:14px;font-family:inherit;width:100%;">
+            <option value="confirmed" ${b.status==='confirmed'?'selected':''}>確定</option>
+            <option value="pending" ${b.status==='pending'?'selected':''}>仮予約</option>
+            <option value="cancelled" ${b.status==='cancelled'?'selected':''}>キャンセル</option>
+          </select>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:6px;grid-column:1/-1;">
+          <label style="font-size:12px;font-weight:600;color:var(--muted);">備考</label>
+          <textarea id="edit-notes" style="padding:10px 14px;border:1.5px solid var(--border);border-radius:8px;font-size:14px;font-family:inherit;width:100%;min-height:60px;resize:vertical;">${b.notes||''}</textarea>
+        </div>
+      </div>
+      <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:20px;">
+        <button onclick="closeEditModal()" style="padding:10px 20px;background:#f0f2f5;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;">キャンセル</button>
+        <button onclick="saveEditBooking('${b.id}')" style="padding:10px 20px;background:var(--red);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;">保存する</button>
+      </div>
+    </div>
+  </div>`;
+  
+  document.body.insertAdjacentHTML('beforeend', modalHtml);
 }
 
-// ── スタッフ・車両 ──
-let staffData = [];
-let vehicleData = [];
+function closeEditModal() {
+  const el = document.getElementById('edit-modal-overlay');
+  if (el) el.remove();
+}
 
-async function loadMembers() {
-  const headers = {
-    'apikey': SUPABASE_KEY,
-    'Authorization': 'Bearer ' + SUPABASE_KEY,
-    'Content-Type': 'application/json'
+async function saveEditBooking(id) {
+  const updated = {
+    patient_name: document.getElementById('edit-name').value,
+    patient_phone: document.getElementById('edit-phone').value,
+    transport_date: document.getElementById('edit-date').value,
+    transport_time: document.getElementById('edit-time').value + ':00',
+    from_address: document.getElementById('edit-from').value,
+    to_address: document.getElementById('edit-to').value,
+    vehicle: document.getElementById('edit-vehicle').value,
+    staff: document.getElementById('edit-staff').value,
+    fare: parseFloat(document.getElementById('edit-fare').value)||0,
+    status: document.getElementById('edit-status').value,
+    notes: document.getElementById('edit-notes').value,
   };
-  // スタッフ読み込み
-  try {
-    const res = await fetch(SUPABASE_URL + '/rest/v1/staff?select=*', { headers });
-    const data = await res.json();
-    staffData = Array.isArray(data) ? data : [];
-  } catch(e) {
-    staffData = [];
-  }
-  // 車両読み込み
-  try {
-    const res = await fetch(SUPABASE_URL + '/rest/v1/vehicles?select=*', { headers });
-    const data = await res.json();
-    vehicleData = Array.isArray(data) ? data : [];
-  } catch(e) {
-    vehicleData = [];
-  }
-  renderStaffList();
-  renderVehicleList();
-}
-
-function renderStaffList() {
-  const el = document.getElementById('staff-list');
-  if (!Array.isArray(staffData) || !staffData.length) {
-    el.innerHTML = '<p style="color:var(--muted);font-size:13px;padding:8px;">スタッフが登録されていません</p>';
-    return;
-  }
-  el.innerHTML = staffData.map(s => `
-    <div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border);">
-      <div style="width:36px;height:36px;background:${s.active?'var(--red)':'#ccc'};border-radius:50%;display:grid;place-items:center;color:#fff;font-size:14px;font-weight:700;flex-shrink:0;">${s.name[0]}</div>
-      <div style="flex:1;">
-        <div style="font-size:13px;font-weight:700;">${s.name}</div>
-        <div style="font-size:11px;color:var(--muted);">${s.role||''}${s.phone?' / '+s.phone:''}</div>
-      </div>
-      <span style="font-size:11px;background:${s.active?'#d1fae5':'#f3f4f6'};color:${s.active?'#065f46':'#888'};padding:2px 8px;border-radius:20px;">${s.active?'稼働中':'休止'}</span>
-      <button onclick="toggleStaff('${s.id}',${s.active})" style="background:none;border:1px solid var(--border);border-radius:6px;padding:3px 8px;font-size:11px;cursor:pointer;">${s.active?'休止':'復帰'}</button>
-    </div>`).join('');
-}
-
-function renderVehicleList() {
-  const el = document.getElementById('vehicle-list');
-  if (!Array.isArray(vehicleData) || !vehicleData.length) {
-    el.innerHTML = '<p style="color:var(--muted);font-size:13px;padding:8px;">車両が登録されていません</p>';
-    return;
-  }
-  el.innerHTML = vehicleData.map(v => `
-    <div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border);">
-      <div style="width:36px;height:36px;background:${v.active?'var(--blue)':'#ccc'};border-radius:8px;display:grid;place-items:center;color:#fff;font-size:18px;flex-shrink:0;">🚑</div>
-      <div style="flex:1;">
-        <div style="font-size:13px;font-weight:700;">${v.name}</div>
-        <div style="font-size:11px;color:var(--muted);">${v.type||''}${v.plate?' / '+v.plate:''}</div>
-      </div>
-      <span style="font-size:11px;background:${v.active?'#dbeafe':'#f3f4f6'};color:${v.active?'#1e40af':'#888'};padding:2px 8px;border-radius:20px;">${v.active?'稼働中':'休止'}</span>
-      <button onclick="toggleVehicle('${v.id}',${v.active})" style="background:none;border:1px solid var(--border);border-radius:6px;padding:3px 8px;font-size:11px;cursor:pointer;">${v.active?'休止':'復帰'}</button>
-    </div>`).join('');
-}
-
-function updateBookingDropdowns() {
-  // スタッフドロップダウン更新
-  const staffSel = document.getElementById('b-staff');
-  if (staffSel && Array.isArray(staffData)) {
-    const active = staffData.filter(s => s.active);
-    staffSel.innerHTML = '<option value="">選択してください</option>' +
-      active.map(s => `<option value="${s.name}">${s.name}（${s.role||''}）</option>`).join('');
-  }
-  // 車両ドロップダウン更新
-  const vehSel = document.getElementById('b-vehicle');
-  if (vehSel && Array.isArray(vehicleData)) {
-    const active = vehicleData.filter(v => v.active);
-    vehSel.innerHTML = '<option value="">選択してください</option>' +
-      active.map(v => `<option value="${v.name}">${v.name}（${v.type||''}）</option>`).join('');
-  }
-}
-
-function showAddStaff() {
-  document.getElementById('add-staff-form').style.display = 'block';
-}
-function showAddVehicle() {
-  document.getElementById('add-vehicle-form').style.display = 'block';
-}
-
-async function addStaff() {
-  const name = document.getElementById('new-staff-name').value.trim();
-  if (!name) { showToast('氏名を入力してください', 'error'); return; }
-  const result = await sb.insert('staff', {
-    name, role: document.getElementById('new-staff-role').value,
-    phone: document.getElementById('new-staff-phone').value, active: true
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/bookings?id=eq.${id}`, {
+    method: 'PATCH',
+    headers: {'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY,'Content-Type':'application/json','Prefer':'return=minimal'},
+    body: JSON.stringify(updated)
   });
-  if (!result.ok) { showToast('追加エラー: ' + result.body, 'error'); return; }
-  showToast(name + ' を追加しました', 'success');
-  document.getElementById('add-staff-form').style.display = 'none';
-  ['new-staff-name','new-staff-role','new-staff-phone'].forEach(id => document.getElementById(id).value = '');
-  loadMembers();
-}
-
-async function addVehicle() {
-  const name = document.getElementById('new-vehicle-name').value.trim();
-  if (!name) { showToast('車両名を入力してください', 'error'); return; }
-  const result = await sb.insert('vehicles', {
-    name, type: document.getElementById('new-vehicle-type').value,
-    plate: document.getElementById('new-vehicle-plate').value, active: true
-  });
-  if (!result.ok) { showToast('追加エラー: ' + result.body, 'error'); return; }
-  showToast(name + ' を追加しました', 'success');
-  document.getElementById('add-vehicle-form').style.display = 'none';
-  ['new-vehicle-name','new-vehicle-type','new-vehicle-plate'].forEach(id => document.getElementById(id).value = '');
-  loadMembers();
-}
-
-async function toggleStaff(id, current) {
-  await sb.update('staff', {active: !current}, id);
-  loadMembers();
-}
-
-async function toggleVehicle(id, current) {
-  await sb.update('vehicles', {active: !current}, id);
-  loadMembers();
-}
-
-// ── Nav ──
-function showPage(page){
-  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
-  document.querySelectorAll('.nb').forEach(b=>b.classList.remove('active'));
-  document.getElementById(`page-${page}`).classList.add('active');
-  document.getElementById(`nav-${page}`).classList.add('active');
-  if(page==='dashboard')loadBookings();
-  if(page==='calendar')renderCalendar();
-}
-
-// ── Toast ──
-function showToast(msg,type='success'){
-  const t=document.getElementById('toast');
-  t.textContent=msg;t.className=`toast show ${type}`;
-  setTimeout(()=>t.className='toast',3000);
-}
-</script>
-</body>
-</html>
+  if (res.ok) {
+    showToast('予約を更新しました ✓', 'success');
+    closeE
