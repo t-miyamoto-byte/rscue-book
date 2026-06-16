@@ -175,6 +175,40 @@ td{padding:11px 14px;vertical-align:middle;border-bottom:1px solid #f0f2f5;}
   <!-- Step2: 搬送情報 -->
   <div class="card" id="booking-step-2" style="display:none;">
     <div class="ct">🗺 搬送元・搬送先</div>
+
+    <!-- 出発地点 -->
+    <div class="section-title">🚑 出発地点</div>
+    <div class="fg" style="margin-bottom:16px;">
+      <div class="fgroup full">
+        <label>出発地点の選択</label>
+        <div style="display:flex;gap:10px;margin-top:4px;">
+          <label style="display:flex;align-items:center;gap:8px;padding:10px 16px;border:1.5px solid var(--border);border-radius:8px;cursor:pointer;flex:1;font-size:13px;font-weight:500;" id="dept-base-label">
+            <input type="radio" name="departure" id="dept-base" value="base" checked onchange="onDeptChange()" style="width:16px;height:16px;accent-color:var(--red);">
+            🏢 営業所から出発
+          </label>
+          <label style="display:flex;align-items:center;gap:8px;padding:10px 16px;border:1.5px solid var(--border);border-radius:8px;cursor:pointer;flex:1;font-size:13px;font-weight:500;" id="dept-prev-label">
+            <input type="radio" name="departure" id="dept-prev" value="prev" onchange="onDeptChange()" style="width:16px;height:16px;accent-color:var(--red);">
+            🔄 前案件から転戦
+          </label>
+        </div>
+      </div>
+      <div class="fgroup full" id="dept-prev-input" style="display:none;">
+        <label>前案件の搬送先（転戦元）</label>
+        <input id="b-departure" type="text" placeholder="前案件の搬送先を入力（例：名古屋市立大学病院）">
+        <div style="font-size:11px;color:var(--muted);margin-top:4px;">📍 施設名または住所を入力してください</div>
+      </div>
+    </div>
+
+    <!-- 迎え距離（参考情報） -->
+    <div id="pickup-info" style="display:none;background:#f0f9ff;border:1px solid #bae6fd;border-radius:10px;padding:14px 18px;margin-bottom:16px;">
+      <div style="font-size:11px;font-weight:700;color:#0369a1;margin-bottom:8px;">🚑 迎え（出発地点 → 搬送元）参考情報</div>
+      <div style="display:flex;gap:24px;">
+        <div><div style="font-size:10px;color:var(--muted);">距離</div><div style="font-size:18px;font-weight:700;color:#0369a1;" id="pickup-dist">—</div></div>
+        <div><div style="font-size:10px;color:var(--muted);">所要時間</div><div style="font-size:18px;font-weight:700;color:#0369a1;" id="pickup-dur">—</div></div>
+        <div><div style="font-size:10px;color:var(--muted);">出発地点</div><div style="font-size:12px;color:#0369a1;font-weight:600;" id="pickup-from-label">営業所</div></div>
+      </div>
+    </div>
+
     <div class="fg">
       <div class="fgroup full">
         <label>搬送元 <span class="req">必須</span></label>
@@ -397,7 +431,6 @@ window.onload = () => {
   document.getElementById('b-date').value = new Date().toISOString().split('T')[0];
   loadGoogleMaps();
   loadBookings();
-  loadMembers();
   renderCalendar();
 };
 
@@ -489,8 +522,67 @@ async function calcDistance() {
       document.getElementById('btn-step3').disabled=false;
       updateFare();
       showToast('距離計算完了 ✓','success');
+      // 迎え距離も自動計算（少し遅延させて実行）
+      setTimeout(calcPickupDistance, 500);
     } else {
       showToast('住所が見つかりませんでした','error');
+    }
+  });
+}
+
+// ── 出発地点変更 ──
+function onDeptChange() {
+  const isPrev = document.getElementById('dept-prev').checked;
+  document.getElementById('dept-prev-input').style.display = isPrev ? 'block' : 'none';
+  document.getElementById('pickup-info').style.display = 'none';
+  // ラベルのスタイル更新
+  document.getElementById('dept-base-label').style.borderColor = isPrev ? 'var(--border)' : 'var(--red)';
+  document.getElementById('dept-prev-label').style.borderColor = isPrev ? 'var(--red)' : 'var(--border)';
+}
+
+// ── 迎え距離計算 ──
+function calcPickupDistance() {
+  const fromEl = document.getElementById('b-from');
+  if (!fromEl.value.trim()) return;
+  if (!mapsLoaded) return;
+
+  const isPrev = document.getElementById('dept-prev').checked;
+  const BASE_ADDRESS = '愛知県名古屋市守山区下志段味1-3807';
+  
+  let departureOrigin;
+  let departureLabel;
+  
+  if (isPrev) {
+    const prevAddr = document.getElementById('b-departure').value.trim();
+    if (!prevAddr) return;
+    departureOrigin = prevAddr;
+    departureLabel = prevAddr;
+  } else {
+    departureOrigin = BASE_ADDRESS;
+    departureLabel = '営業所（守山区下志段味）';
+  }
+
+  // 搬送元の座標またはテキスト
+  const toAddr = fromEl.dataset.lat
+    ? new google.maps.LatLng(parseFloat(fromEl.dataset.lat), parseFloat(fromEl.dataset.lng))
+    : fromEl.value.trim();
+
+  // 別のDirectionsServiceインスタンスを使用
+  const pickupDirService = new google.maps.DirectionsService();
+  pickupDirService.route({
+    origin: departureOrigin,
+    destination: toAddr,
+    travelMode: google.maps.TravelMode.DRIVING,
+    region: 'JP'
+  }, (result, status) => {
+    if (status === 'OK') {
+      const leg = result.routes[0].legs[0];
+      const distKm = (leg.distance.value / 1000).toFixed(1);
+      const durMin = Math.ceil(leg.duration.value / 60);
+      document.getElementById('pickup-dist').textContent = distKm + 'km';
+      document.getElementById('pickup-dur').textContent = durMin + '分';
+      document.getElementById('pickup-from-label').textContent = departureLabel;
+      document.getElementById('pickup-info').style.display = 'block';
     }
   });
 }
@@ -879,4 +971,191 @@ async function saveEditBooking(id) {
   });
   if (res.ok) {
     showToast('予約を更新しました ✓', 'success');
-    closeE
+    closeEditModal();
+    loadBookings();
+  } else {
+    showToast('更新エラーが発生しました', 'error');
+  }
+}
+
+async function deleteBooking(id, name) {
+  if (!confirm(`「${name}」の予約を削除しますか？\n※この操作は取り消せません`)) return;
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/bookings?id=eq.${id}`, {
+    method: 'DELETE',
+    headers: {'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY,'Prefer':'return=minimal'}
+  });
+  if (res.ok) {
+    showToast(name + ' の予約を削除しました', 'success');
+    loadBookings();
+  } else {
+    showToast('削除エラーが発生しました', 'error');
+  }
+}
+
+// ── Calendar ──
+function changeMonth(d){calMonth+=d;if(calMonth>11){calMonth=0;calYear++;}if(calMonth<0){calMonth=11;calYear--;}renderCalendar();}
+function renderCalendar(){
+  const lbl=document.getElementById('cal-month-label');
+  const grid=document.getElementById('cal-grid');
+  if(!lbl||!grid)return;
+  lbl.textContent=`${calYear}年 ${calMonth+1}月`;
+  const days=['日','月','火','水','木','金','土'];
+  let html=days.map((d,i)=>`<div class="cdl" style="${i===0?'color:var(--red)':i===6?'color:var(--blue)':''}">${d}</div>`).join('');
+  const first=new Date(calYear,calMonth,1).getDay();
+  const total=new Date(calYear,calMonth+1,0).getDate();
+  for(let i=0;i<first;i++)html+='<div></div>';
+  for(let d=1;d<=total;d++){
+    const ds=`${calYear}-${String(calMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const evs=allBookings.filter(b=>b.transport_date===ds);
+    html+=`<div class="cc ${evs.length?'has-event':''}"><div class="cd">${d}</div>${evs.slice(0,3).map(e=>`<div class="ce">${e.transport_time?.slice(0,5)} ${e.patient_name}</div>`).join('')}${evs.length>3?`<div style="font-size:9px;color:var(--muted)">+${evs.length-3}件</div>`:''}</div>`;
+  }
+  grid.innerHTML=html;
+}
+
+// ── スタッフ・車両 ──
+let staffData = [];
+let vehicleData = [];
+
+async function loadMembers() {
+  const headers = {
+    'apikey': SUPABASE_KEY,
+    'Authorization': 'Bearer ' + SUPABASE_KEY,
+    'Content-Type': 'application/json'
+  };
+  // スタッフ読み込み
+  try {
+    const res = await fetch(SUPABASE_URL + '/rest/v1/staff?select=*', { headers });
+    const data = await res.json();
+    staffData = Array.isArray(data) ? data : [];
+  } catch(e) {
+    staffData = [];
+  }
+  // 車両読み込み
+  try {
+    const res = await fetch(SUPABASE_URL + '/rest/v1/vehicles?select=*', { headers });
+    const data = await res.json();
+    vehicleData = Array.isArray(data) ? data : [];
+  } catch(e) {
+    vehicleData = [];
+  }
+  renderStaffList();
+  renderVehicleList();
+}
+
+function renderStaffList() {
+  const el = document.getElementById('staff-list');
+  if (!Array.isArray(staffData) || !staffData.length) {
+    el.innerHTML = '<p style="color:var(--muted);font-size:13px;padding:8px;">スタッフが登録されていません</p>';
+    return;
+  }
+  el.innerHTML = staffData.map(s => `
+    <div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border);">
+      <div style="width:36px;height:36px;background:${s.active?'var(--red)':'#ccc'};border-radius:50%;display:grid;place-items:center;color:#fff;font-size:14px;font-weight:700;flex-shrink:0;">${s.name[0]}</div>
+      <div style="flex:1;">
+        <div style="font-size:13px;font-weight:700;">${s.name}</div>
+        <div style="font-size:11px;color:var(--muted);">${s.role||''}${s.phone?' / '+s.phone:''}</div>
+      </div>
+      <span style="font-size:11px;background:${s.active?'#d1fae5':'#f3f4f6'};color:${s.active?'#065f46':'#888'};padding:2px 8px;border-radius:20px;">${s.active?'稼働中':'休止'}</span>
+      <button onclick="toggleStaff('${s.id}',${s.active})" style="background:none;border:1px solid var(--border);border-radius:6px;padding:3px 8px;font-size:11px;cursor:pointer;">${s.active?'休止':'復帰'}</button>
+    </div>`).join('');
+}
+
+function renderVehicleList() {
+  const el = document.getElementById('vehicle-list');
+  if (!Array.isArray(vehicleData) || !vehicleData.length) {
+    el.innerHTML = '<p style="color:var(--muted);font-size:13px;padding:8px;">車両が登録されていません</p>';
+    return;
+  }
+  el.innerHTML = vehicleData.map(v => `
+    <div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border);">
+      <div style="width:36px;height:36px;background:${v.active?'var(--blue)':'#ccc'};border-radius:8px;display:grid;place-items:center;color:#fff;font-size:18px;flex-shrink:0;">🚑</div>
+      <div style="flex:1;">
+        <div style="font-size:13px;font-weight:700;">${v.name}</div>
+        <div style="font-size:11px;color:var(--muted);">${v.type||''}${v.plate?' / '+v.plate:''}</div>
+      </div>
+      <span style="font-size:11px;background:${v.active?'#dbeafe':'#f3f4f6'};color:${v.active?'#1e40af':'#888'};padding:2px 8px;border-radius:20px;">${v.active?'稼働中':'休止'}</span>
+      <button onclick="toggleVehicle('${v.id}',${v.active})" style="background:none;border:1px solid var(--border);border-radius:6px;padding:3px 8px;font-size:11px;cursor:pointer;">${v.active?'休止':'復帰'}</button>
+    </div>`).join('');
+}
+
+function updateBookingDropdowns() {
+  // スタッフドロップダウン更新
+  const staffSel = document.getElementById('b-staff');
+  if (staffSel && Array.isArray(staffData)) {
+    const active = staffData.filter(s => s.active);
+    staffSel.innerHTML = '<option value="">選択してください</option>' +
+      active.map(s => `<option value="${s.name}">${s.name}（${s.role||''}）</option>`).join('');
+  }
+  // 車両ドロップダウン更新
+  const vehSel = document.getElementById('b-vehicle');
+  if (vehSel && Array.isArray(vehicleData)) {
+    const active = vehicleData.filter(v => v.active);
+    vehSel.innerHTML = '<option value="">選択してください</option>' +
+      active.map(v => `<option value="${v.name}">${v.name}（${v.type||''}）</option>`).join('');
+  }
+}
+
+function showAddStaff() {
+  document.getElementById('add-staff-form').style.display = 'block';
+}
+function showAddVehicle() {
+  document.getElementById('add-vehicle-form').style.display = 'block';
+}
+
+async function addStaff() {
+  const name = document.getElementById('new-staff-name').value.trim();
+  if (!name) { showToast('氏名を入力してください', 'error'); return; }
+  const result = await sb.insert('staff', {
+    name, role: document.getElementById('new-staff-role').value,
+    phone: document.getElementById('new-staff-phone').value, active: true
+  });
+  if (!result.ok) { showToast('追加エラー: ' + result.body, 'error'); return; }
+  showToast(name + ' を追加しました', 'success');
+  document.getElementById('add-staff-form').style.display = 'none';
+  ['new-staff-name','new-staff-role','new-staff-phone'].forEach(id => document.getElementById(id).value = '');
+  loadMembers();
+}
+
+async function addVehicle() {
+  const name = document.getElementById('new-vehicle-name').value.trim();
+  if (!name) { showToast('車両名を入力してください', 'error'); return; }
+  const result = await sb.insert('vehicles', {
+    name, type: document.getElementById('new-vehicle-type').value,
+    plate: document.getElementById('new-vehicle-plate').value, active: true
+  });
+  if (!result.ok) { showToast('追加エラー: ' + result.body, 'error'); return; }
+  showToast(name + ' を追加しました', 'success');
+  document.getElementById('add-vehicle-form').style.display = 'none';
+  ['new-vehicle-name','new-vehicle-type','new-vehicle-plate'].forEach(id => document.getElementById(id).value = '');
+  loadMembers();
+}
+
+async function toggleStaff(id, current) {
+  await sb.update('staff', {active: !current}, id);
+  loadMembers();
+}
+
+async function toggleVehicle(id, current) {
+  await sb.update('vehicles', {active: !current}, id);
+  loadMembers();
+}
+
+// ── Nav ──
+function showPage(page){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nb').forEach(b=>b.classList.remove('active'));
+  document.getElementById(`page-${page}`).classList.add('active');
+  document.getElementById(`nav-${page}`).classList.add('active');
+  if(page==='dashboard')loadBookings();
+  if(page==='calendar')renderCalendar();
+}
+
+// ── Toast ──
+function showToast(msg,type='success'){
+  const t=document.getElementById('toast');
+  t.textContent=msg;t.className=`toast show ${type}`;
+  setTimeout(()=>t.className='toast',3000);
+}
+</script>
+</body>
+</html>
