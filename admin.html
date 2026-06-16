@@ -73,6 +73,20 @@ input:focus,select:focus{border-color:var(--red);background:#fff;}
 </style>
 </head>
 <body>
+
+<!-- パスワード画面 -->
+<div id="pw-screen" style="display:none;position:fixed;inset:0;background:var(--dark);z-index:9999;display:flex;align-items:center;justify-content:center;">
+  <div style="background:#fff;border-radius:16px;padding:40px;width:360px;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.5);">
+    <div style="width:48px;height:48px;background:var(--red);border-radius:12px;display:grid;place-items:center;color:#fff;font-size:24px;font-weight:900;margin:0 auto 16px;">＋</div>
+    <div style="font-size:18px;font-weight:700;margin-bottom:4px;">RESCUE BOOK</div>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:24px;">管理画面</div>
+    <input id="pw-input" type="password" placeholder="パスワードを入力" style="width:100%;padding:12px 16px;border:1.5px solid var(--border);border-radius:8px;font-size:14px;font-family:inherit;margin-bottom:12px;text-align:center;"
+      onkeydown="if(event.key==='Enter')checkPw()">
+    <div id="pw-error" style="color:var(--red);font-size:12px;margin-bottom:12px;display:none;">パスワードが違います</div>
+    <button onclick="checkPw()" style="width:100%;padding:12px;background:var(--red);color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;">ログイン</button>
+  </div>
+</div>
+
 <header>
   <div class="hi">
     <div class="logo">
@@ -128,6 +142,20 @@ input:focus,select:focus{border-color:var(--red);background:#fff;}
 <div class="toast" id="toast"></div>
 
 <script>
+// ── パスワード認証 ──
+const CORRECT_PW = 'loco24';
+function checkPw() {
+  const pw = document.getElementById('pw-input').value;
+  if (pw === CORRECT_PW) {
+    document.getElementById('pw-screen').style.display = 'none';
+    sessionStorage.setItem('rescue_admin_auth', '1');
+  } else {
+    document.getElementById('pw-error').style.display = 'block';
+    document.getElementById('pw-input').value = '';
+    document.getElementById('pw-input').focus();
+  }
+}
+
 const SUPABASE_URL = 'https://vdrtucpegztfgapxrnuf.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZkcnR1Y3BlZ3p0ZmdhcHhybnVmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwMzE3MTIsImV4cCI6MjA5NTYwNzcxMn0.UzP9uAYQOUBUKNfS8xxVk_Koc-0gwIP9D-f8N9xpYg0';
 const H = {'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY,'Content-Type':'application/json'};
@@ -145,7 +173,17 @@ async function api(path, method='GET', body=null) {
   return {ok: res.ok, status: res.status};
 }
 
-window.onload = () => { loadStaff(); loadVehicles(); };
+window.onload = () => {
+  // パスワード確認
+  if (!sessionStorage.getItem('rescue_admin_auth')) {
+    document.getElementById('pw-screen').style.display = 'flex';
+    setTimeout(() => document.getElementById('pw-input').focus(), 100);
+  } else {
+    document.getElementById('pw-screen').style.display = 'none';
+  }
+  loadStaff();
+  loadVehicles();
+};
 
 // ── タブ切替 ──
 function switchTab(tab) {
@@ -265,10 +303,24 @@ async function toggleActive(table, id, current) {
 
 async function deleteRecord(table, id, name) {
   if (!confirm(`「${name}」を削除しますか？\n※この操作は取り消せません`)) return;
-  const result = await api(table + '?id=eq.' + id, 'DELETE');
-  if (result.ok) {
-    showToast(name + ' を削除しました', 'success');
-  } else {
+  try {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}?id=eq.${id}`, {
+      method: 'DELETE',
+      headers: {
+        'apikey': SUPABASE_KEY,
+        'Authorization': 'Bearer ' + SUPABASE_KEY,
+        'Prefer': 'return=minimal'
+      }
+    });
+    if (res.ok) {
+      showToast(name + ' を削除しました', 'success');
+    } else {
+      const text = await res.text();
+      console.error('削除エラー:', res.status, text);
+      showToast('削除エラー: ' + res.status, 'error');
+    }
+  } catch(e) {
+    console.error('削除例外:', e);
     showToast('削除エラーが発生しました', 'error');
   }
   table==='staff' ? loadStaff() : loadVehicles();
